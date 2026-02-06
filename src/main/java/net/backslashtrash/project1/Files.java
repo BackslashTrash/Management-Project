@@ -2,15 +2,13 @@ package net.backslashtrash.project1;
 
 public enum Files {
     TITLESCREEN(0),
-    EMPLOYEE(1),
-    EMPLOYER(2),
-    LOGIN(3),
-    REGISTER(4);
+    REGISTER(1),
+    LOGIN(2),
+    EMPLOYEE(3),
+    EMPLOYER(4);
 
-
-    public final int INDEX;
-
-    Files(int fileIndex) {
-        INDEX = fileIndex;
+    private int index;
+    Files(int index) {
+        this.index=index;
     }
 }

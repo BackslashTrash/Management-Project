@@ -32,6 +32,9 @@ public class Controller implements Initializable {
     private Stage stage;
     private Parent lastRoot;
     private final String[] accountType = {"Employee", "Employer"};
+    private final String[] resourceList = {
+            "titleScreen.fxml", "register.fxml", "login.fxml", "employee.fxml", "employer.fxml"
+    };
 
     @FXML
     public void employerLogin(ActionEvent event){
@@ -45,14 +48,14 @@ public class Controller implements Initializable {
 
     @FXML
     public void onRegister(ActionEvent event) throws IOException {
-        switchScene(event, FXMLLoader.load(App.class.getResource("register.fxml")));
+        switchScene(event, FXMLLoader.load(App.class.getResource(resourceList[1])));
     }
 
     @FXML
     public void onConfirmRegister(ActionEvent event) throws IOException {
         if (isAccountValid()){
             Register.register(accountTypeSelect.getValue(),enterUser.getText(),enterPass.getText());
-            switchScene(event,getResource(Files.TITLESCREEN.INDEX));
+            switchScene(event,FXMLLoader.load(App.class.getResource("titleScreen.fxml")));
             JOptionPane.showMessageDialog(null, "Account created, please login now", "Account Creation",JOptionPane.INFORMATION_MESSAGE);
 
         }
@@ -114,15 +117,5 @@ public class Controller implements Initializable {
 
     private Parent getLastRoot() {
         return lastRoot;
-    }
-    private Parent getResource(int index) throws IOException{
-        Parent[] resourceList = {
-                FXMLLoader.load(App.class.getResource("titleScreen.fxml")),
-                FXMLLoader.load(App.class.getResource("employee.fxml")),
-                FXMLLoader.load(App.class.getResource("employer.fxml")),
-                FXMLLoader.load(App.class.getResource("login.fxml")),
-                FXMLLoader.load(App.class.getResource("register.xml"))
-        };
-        return resourceList[index];
     }
 }
