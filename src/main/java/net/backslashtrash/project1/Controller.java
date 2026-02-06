@@ -17,7 +17,8 @@ import java.util.ResourceBundle;
 public class Controller implements Initializable {
 
     @FXML
-    public ChoiceBox<String> accountTypeSelect;
+    public ChoiceBox<String> accountTypeSelect = new ChoiceBox<>();
+
     private Scene scene;
     private Stage stage;
     private Parent root;
@@ -61,8 +62,18 @@ public class Controller implements Initializable {
         stage.show();
     }
 
+    /*
+    * Loads on startup
+    *
+    * */
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         accountTypeSelect.getItems().addAll(accountType);
     }
+
+    private String getAccountSelected(){
+        return accountTypeSelect.getValue();
+    }
+
+
 }

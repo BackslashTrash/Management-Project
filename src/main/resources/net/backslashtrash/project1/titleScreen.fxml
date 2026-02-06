@@ -18,8 +18,8 @@
                      <Font name="Segoe UI Bold" size="20.0" />
                   </font>
                </Text>
+               <HBox alignment="BOTTOM_CENTER" prefHeight="100.0" prefWidth="200.0" />
                <Button alignment="CENTER_RIGHT" mnemonicParsing="false" onAction="#onRegister" text="Register" />
-               <HBox prefHeight="100.0" prefWidth="200.0" />
             </children>
          </VBox>
            <Button mnemonicParsing="false" onAction="#employerLogin" prefHeight="40.0" prefWidth="102.0" text="Employer Login" />

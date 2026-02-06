@@ -3,7 +3,7 @@ package net.backslashtrash.project1;
 import tools.jackson.core.json.JsonFactory;
 
 public class Register {
-    JsonFactory factory;
+    JsonFactory factory = new JsonFactory();
     public Register() {
 
     }
