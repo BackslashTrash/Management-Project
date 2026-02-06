@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.util.UUID;
 
-@JsonPropertyOrder(value = "UUID","name","password", alphabetic = true)
+
 public class Employee extends Account{
     private UUID uuid;
 
