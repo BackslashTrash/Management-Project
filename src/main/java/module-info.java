@@ -3,6 +3,7 @@ module net.backslashtrash.project1 {
     requires javafx.fxml;
     requires tools.jackson.core;
     requires com.fasterxml.jackson.annotation;
+    requires java.desktop;
 
 
     opens net.backslashtrash.project1 to javafx.fxml;

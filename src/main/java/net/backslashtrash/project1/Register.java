@@ -8,7 +8,7 @@ public class Register {
 
     }
 
-    public static void register(String type, String username, long password) {
+    public static void register(String type, String username, String password) {
 
     }
 }

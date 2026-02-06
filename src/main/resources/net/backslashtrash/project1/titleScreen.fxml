@@ -10,19 +10,21 @@
    <children>
       <HBox VBox.vgrow="ALWAYS" />
        <HBox alignment="BOTTOM_CENTER" VBox.vgrow="ALWAYS">
-           <Button mnemonicParsing="false" onAction="#employeeLogin" prefHeight="40.0" prefWidth="102.0" text="Employee Login" />
          <VBox alignment="TOP_CENTER" prefHeight="200.0" prefWidth="100.0">
             <children>
                <Text fill="#4a93ff" strokeType="OUTSIDE" strokeWidth="0.0" text="Management Engine" textAlignment="CENTER">
                   <font>
-                     <Font name="Segoe UI Bold" size="20.0" />
+                     <Font name="Segoe UI Bold" size="26.0" />
                   </font>
                </Text>
                <HBox alignment="BOTTOM_CENTER" prefHeight="100.0" prefWidth="200.0" />
-               <Button alignment="CENTER_RIGHT" mnemonicParsing="false" onAction="#onRegister" text="Register" />
+               <Button alignment="CENTER" contentDisplay="CENTER" mnemonicParsing="false" onAction="#onRegister" prefHeight="70.0" prefWidth="122.0" text="Start" textAlignment="RIGHT">
+                  <font>
+                     <Font name="SwedenSans-Regular" size="23.0" />
+                  </font>
+               </Button>
             </children>
          </VBox>
-           <Button mnemonicParsing="false" onAction="#employerLogin" prefHeight="40.0" prefWidth="102.0" text="Employer Login" />
        </HBox>
       <HBox VBox.vgrow="ALWAYS" />
    </children>
