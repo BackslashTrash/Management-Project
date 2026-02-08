@@ -17,12 +17,19 @@
                      <Font name="Segoe UI Bold" size="26.0" />
                   </font>
                </Text>
-               <HBox alignment="BOTTOM_CENTER" prefHeight="100.0" prefWidth="200.0" />
-               <Button alignment="CENTER" contentDisplay="CENTER" mnemonicParsing="false" onAction="#onRegister" prefHeight="70.0" prefWidth="122.0" text="Start" textAlignment="RIGHT">
-                  <font>
-                     <Font name="SwedenSans-Regular" size="23.0" />
-                  </font>
-               </Button>
+               <HBox alignment="BOTTOM_CENTER" prefHeight="100.0" prefWidth="200.0" spacing="40.0">
+                  <children>
+                     <Button alignment="CENTER" contentDisplay="CENTER" mnemonicParsing="false" onAction="#onSignup" prefHeight="43.0" prefWidth="102.0" text="Sign up" textAlignment="RIGHT">
+                        <font>
+                           <Font name="Yu Gothic UI Semibold" size="20.0" />
+                        </font>
+                     </Button>
+                     <Button alignment="CENTER" contentDisplay="CENTER" mnemonicParsing="false" onAction="#onLogin" prefHeight="43.0" prefWidth="102.0" text="Login" textAlignment="RIGHT">
+                        <font>
+                           <Font name="Yu Gothic UI Semibold" size="20.0" />
+                        </font>
+                     </Button>
+                  </children></HBox>
             </children>
          </VBox>
        </HBox>

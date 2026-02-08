@@ -7,6 +7,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
@@ -27,49 +28,48 @@ public class Controller implements Initializable {
     public PasswordField enterPass;
     public PasswordField confirmPass;
     public Text warningMessage;
+    public TextField loginUser;
+    public PasswordField loginPass;
+    public Button loginButton;
 
     private Scene scene;
     private Stage stage;
     private Parent lastRoot;
-    private final String[] accountType = {"Employee", "Employer"};
+
     private final String[] resourceList = {
             "titleScreen.fxml", "register.fxml", "login.fxml", "employee.fxml", "employer.fxml"
     };
 
-    @FXML
-    public void employerLogin(ActionEvent event){
-
+    public void onSignup(ActionEvent event) throws IOException {
+        switchScene(event, FXMLLoader.load(App.class.getResource(resourceList[Files.REGISTER.INDEX])));
     }
 
-    @FXML
-    public void employeeLogin(ActionEvent event) {
-
+    public void onLogin(ActionEvent event) throws IOException {
+        switchScene(event, FXMLLoader.load(App.class.getResource(resourceList[Files.LOGIN.INDEX])));
     }
 
     @FXML
     public void onRegister(ActionEvent event) throws IOException {
-        switchScene(event, FXMLLoader.load(App.class.getResource(resourceList[1])));
+        switchScene(event, FXMLLoader.load(App.class.getResource(resourceList[Files.REGISTER.INDEX])));
     }
 
     @FXML
     public void onConfirmRegister(ActionEvent event) throws IOException {
         if (isAccountValid()){
-            Register.register(accountTypeSelect.getValue(),enterUser.getText(),enterPass.getText());
-            switchScene(event,FXMLLoader.load(App.class.getResource("titleScreen.fxml")));
-            JOptionPane.showMessageDialog(null, "Account created, please login now", "Account Creation",JOptionPane.INFORMATION_MESSAGE);
-
+            if (Register.register(accountTypeSelect.getValue(),enterUser.getText(),enterPass.getText())){
+                JOptionPane.showMessageDialog(null, "Account created, please login now", "Account Creation",JOptionPane.INFORMATION_MESSAGE);
+                switchScene(event,FXMLLoader.load(App.class.getResource(resourceList[Files.TITLESCREEN.INDEX])));
+            }
         }
     }
 
     @FXML
     public void onHome(ActionEvent event) throws IOException {
-        switchScene(event, FXMLLoader.load(App.class.getResource("titleScreen.fxml")));
+        switchScene(event, FXMLLoader.load(App.class.getResource(resourceList[Files.TITLESCREEN.INDEX])));
     }
 
     /*
     * Switches scene between different FXML files
-    *
-    *
     * */
     private void switchScene(ActionEvent event, Parent root) {
         lastRoot = root;
@@ -82,10 +82,10 @@ public class Controller implements Initializable {
 
     /*
     * Loads on startup
-    *
     * */
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
+        final String[] accountType = {"Employee", "Employer"};
         accountTypeSelect.getItems().addAll(accountType);
     }
 
@@ -94,28 +94,40 @@ public class Controller implements Initializable {
         String pass = enterPass.getText();
         String confirm = confirmPass.getText();
         warningMessage.setText("");
-        boolean isValid = true;
         if (username.length()<3 || username.length()>15){
-            warningMessage.setText("Username must be between 3 and 15 characters");
-            isValid =  false;
+            return accountInvalid("Username must be between 3 and 15 characters");
         }
         if (pass.length()<3 || pass.length()>15){
-            warningMessage.setText("Password must be between 3 and 15 characters");
-            isValid =  false;
+            return accountInvalid("Password must be between 3 and 15 characters");
         }
         if (!pass.equals(confirm)) {
-            warningMessage.setText("Password mismatch");
-            isValid =  false;
+            return accountInvalid("Password mismatch");
         }
         if (accountTypeSelect.getValue() == null){
-            warningMessage.setText("Please select an account type");
-            isValid = false;
+           return accountInvalid("Please select an account type");
         }
-
-        return isValid;
+        return true;
     }
 
     private Parent getLastRoot() {
         return lastRoot;
     }
+
+    @FXML
+    public void onConfirmLogin(ActionEvent event) {
+
+    }
+
+    private boolean accountInvalid(String message){
+        warningMessage.setText(message);
+        return false;
+    }
+
+    private void debugPrinting() {
+        System.out.println(accountTypeSelect.getValue());
+        System.out.println(enterUser.getText());
+        System.out.println(enterPass.getText());
+    }
+
+
 }

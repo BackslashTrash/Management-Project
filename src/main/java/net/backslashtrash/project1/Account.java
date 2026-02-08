@@ -1,12 +1,19 @@
 package net.backslashtrash.project1;
 
 public class Account {
-    private String name;
+    private String username;
     private String password;
-    public Account(String type, String name, String password){
-        this.name=name;
+
+    public Account(){}
+
+    public Account(String name, String password){
+        this.username=name;
         this.password = password;
     }
 
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 
 }

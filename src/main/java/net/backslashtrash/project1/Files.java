@@ -7,8 +7,8 @@ public enum Files {
     EMPLOYEE(3),
     EMPLOYER(4);
 
-    private int index;
+    public final int INDEX;
     Files(int index) {
-        this.index=index;
+        this.INDEX =index;
     }
 }
