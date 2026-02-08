@@ -1,5 +1,7 @@
 package net.backslashtrash.project1;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -7,16 +9,15 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
 import javax.swing.*;
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.ResourceBundle;
 
 
@@ -49,15 +50,15 @@ public class Controller implements Initializable {
     }
 
     @FXML
-    public void onRegister(ActionEvent event) throws IOException {
-        switchScene(event, FXMLLoader.load(App.class.getResource(resourceList[Files.REGISTER.INDEX])));
+    public void onConfirmLogin(ActionEvent event) {
+
     }
 
     @FXML
     public void onConfirmRegister(ActionEvent event) throws IOException {
         if (isAccountValid()){
-            if (Register.register(accountTypeSelect.getValue(),enterUser.getText(),enterPass.getText())){
-                JOptionPane.showMessageDialog(null, "Account created, please login now", "Account Creation",JOptionPane.INFORMATION_MESSAGE);
+            if (AccountManager.register(accountTypeSelect.getValue(),enterUser.getText(),enterPass.getText())){
+                AccountManager.alertCreator(Alert.AlertType.INFORMATION,"Sign up","Account created, please login now" );
                 switchScene(event,FXMLLoader.load(App.class.getResource(resourceList[Files.TITLESCREEN.INDEX])));
             }
         }
@@ -113,10 +114,7 @@ public class Controller implements Initializable {
         return lastRoot;
     }
 
-    @FXML
-    public void onConfirmLogin(ActionEvent event) {
 
-    }
 
     private boolean accountInvalid(String message){
         warningMessage.setText(message);
@@ -129,5 +127,18 @@ public class Controller implements Initializable {
         System.out.println(enterPass.getText());
     }
 
-
+    private Account findAccount(String filename, String user, String pass) throws IOException {
+        File file =  new File("src/main/resources/net/backslashtrash/objects/",filename + ".json");
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayList<Account> accountArrayList = mapper.readValue(file, new TypeReference<>() {});
+        if (file.length() > 0) {
+            return null;
+        }
+        for (Account account : accountArrayList){
+            if (account.getUsername().equals(user) && account.getPassword().equals(pass)){
+                return account;
+            }
+        }
+        return null;
+    }
 }

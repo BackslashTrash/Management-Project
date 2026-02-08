@@ -2,7 +2,7 @@ package net.backslashtrash.project1;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-@JsonInclude(JsonInclude.Include.NON_NULL) //This will exclude null values
+@JsonInclude(JsonInclude.Include.NON_NULL) //This will exclude null values which is uuid for employers
 public class Account {
     private String username;
     private String password;

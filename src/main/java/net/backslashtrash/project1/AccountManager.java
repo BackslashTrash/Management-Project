@@ -7,23 +7,24 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import javafx.scene.control.Alert;
 
-import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.UUID;
 
-public class Register {
+public class AccountManager {
     private static final ObjectMapper objectMapper = JsonMapper
             .builder()
             .enable(SerializationFeature.INDENT_OUTPUT)
             .build();
 
 
+
     JsonFactory factory = new JsonFactory();
-    public Register() {
+    public AccountManager() {
 
     }
 
@@ -37,7 +38,7 @@ public class Register {
 
         for (Account account : accountList) {
             if (account.getUsername().equalsIgnoreCase(username)) {
-                JOptionPane.showMessageDialog(null, "Username already exist!", "Account Creation",JOptionPane.INFORMATION_MESSAGE);
+                alertCreator(Alert.AlertType.WARNING,"Sign up", "Username already exist!");
                 return false;
             }
         }
@@ -52,5 +53,14 @@ public class Register {
         accountList.add(new Account(uuid,username,password));
         objectMapper.writeValue(file, accountList);
         return true;
+    }
+
+
+    public static void alertCreator(Alert.AlertType type, String title, String text) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(text);
+        alert.showAndWait();
     }
 }

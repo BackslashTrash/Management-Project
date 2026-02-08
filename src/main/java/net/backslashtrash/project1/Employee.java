@@ -1,6 +1,5 @@
 package net.backslashtrash.project1;
 
-import java.util.UUID;
 
 
 public class Employee extends Account{

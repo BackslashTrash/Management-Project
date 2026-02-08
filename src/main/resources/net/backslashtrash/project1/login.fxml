@@ -37,7 +37,6 @@
                     <Insets top="-9.0" />
                 </VBox.margin>
             </Button>
-         <Button mnemonicParsing="false" onAction="#onRegister" text="Register" />
         </VBox>
         <VBox prefHeight="200.0" prefWidth="100.0" spacing="4.0">
             <padding>

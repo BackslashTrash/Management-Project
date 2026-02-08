@@ -5,17 +5,23 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-
 import java.io.IOException;
 
 
 public class App extends Application {
 
-
-
-
     public static Scene mainMenu;
+    private static Account currentUser;
 
+    public static void login(Account account){
+        currentUser = account;
+    }
+    public static Account getCurrentUser() {
+        return currentUser;
+    }
+    public static void logout() {
+        currentUser = null;
+    }
 
     @Override
     public void start(Stage stage) throws IOException {
