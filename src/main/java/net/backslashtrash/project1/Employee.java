@@ -4,9 +4,7 @@ import java.util.UUID;
 
 
 public class Employee extends Account{
-    private UUID uuid;
-
-    public Employee(String name, String password) {
-        super(name, password);
+    public Employee(String uuid,String name, String password) {
+        super(uuid,name, password);
     }
 }
