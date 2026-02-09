@@ -13,13 +13,13 @@ public class App extends Application {
     public static Scene mainMenu;
     private static Account currentUser;
 
-    public static void login(Account account){
+    public static void lock(Account account){
         currentUser = account;
     }
     public static Account getCurrentUser() {
         return currentUser;
     }
-    public static void logout() {
+    public static void unlock() {
         currentUser = null;
     }
 

@@ -2,7 +2,6 @@ package net.backslashtrash.project1;
 
 
 
-import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -22,8 +21,6 @@ public class AccountManager {
             .build();
 
 
-
-    JsonFactory factory = new JsonFactory();
     public AccountManager() {
 
     }
@@ -56,6 +53,8 @@ public class AccountManager {
     }
 
 
+
+
     public static void alertCreator(Alert.AlertType type, String title, String text) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
@@ -63,4 +62,6 @@ public class AccountManager {
         alert.setContentText(text);
         alert.showAndWait();
     }
+
+
 }

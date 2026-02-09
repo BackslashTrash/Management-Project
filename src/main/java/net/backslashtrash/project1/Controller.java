@@ -13,7 +13,6 @@ import javafx.scene.control.*;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
-import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -32,26 +31,46 @@ public class Controller implements Initializable {
     public TextField loginUser;
     public PasswordField loginPass;
     public Button loginButton;
+    public Label signInText;
+    public Button signInButton;
 
     private Scene scene;
     private Stage stage;
     private Parent lastRoot;
 
-    private final String[] resourceList = {
+    private final String[] resourceListFXML = {
             "titleScreen.fxml", "register.fxml", "login.fxml", "employee.fxml", "employer.fxml"
     };
+    private final String[] resourceListJSON = {
+            "attendance","employee","employer"
+    };
+
 
     public void onSignup(ActionEvent event) throws IOException {
-        switchScene(event, FXMLLoader.load(App.class.getResource(resourceList[Files.REGISTER.INDEX])));
+        switchScene(event, FXMLLoader.load(App.class.getResource(resourceListFXML[Files.REGISTER.INDEX])));
     }
 
     public void onLogin(ActionEvent event) throws IOException {
-        switchScene(event, FXMLLoader.load(App.class.getResource(resourceList[Files.LOGIN.INDEX])));
+        switchScene(event, FXMLLoader.load(App.class.getResource(resourceListFXML[Files.LOGIN.INDEX])));
     }
 
     @FXML
-    public void onConfirmLogin(ActionEvent event) {
+    public void onConfirmLogin(ActionEvent event) throws IOException {
+        String user = loginUser.getText();
+        String pass = loginPass.getText();
+        warningMessage.setText("");
+        Account account = findAccount(resourceListJSON[1],user,pass );
+        if (account != null){
+            loginAccount(account,event,3);
+            return;
+        }
 
+        account = findAccount(resourceListJSON[2],user,pass );
+        if (account != null){
+            loginAccount(account,event,4);
+            return;
+        }
+        warningMessage.setText("Username or password incorrect");
     }
 
     @FXML
@@ -59,14 +78,14 @@ public class Controller implements Initializable {
         if (isAccountValid()){
             if (AccountManager.register(accountTypeSelect.getValue(),enterUser.getText(),enterPass.getText())){
                 AccountManager.alertCreator(Alert.AlertType.INFORMATION,"Sign up","Account created, please login now" );
-                switchScene(event,FXMLLoader.load(App.class.getResource(resourceList[Files.TITLESCREEN.INDEX])));
+                switchScene(event,FXMLLoader.load(App.class.getResource(resourceListFXML[Files.TITLESCREEN.INDEX])));
             }
         }
     }
 
     @FXML
     public void onHome(ActionEvent event) throws IOException {
-        switchScene(event, FXMLLoader.load(App.class.getResource(resourceList[Files.TITLESCREEN.INDEX])));
+        switchScene(event, FXMLLoader.load(App.class.getResource(resourceListFXML[Files.TITLESCREEN.INDEX])));
     }
 
     /*
@@ -88,6 +107,7 @@ public class Controller implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         final String[] accountType = {"Employee", "Employer"};
         accountTypeSelect.getItems().addAll(accountType);
+
     }
 
     private boolean isAccountValid() {
@@ -131,7 +151,7 @@ public class Controller implements Initializable {
         File file =  new File("src/main/resources/net/backslashtrash/objects/",filename + ".json");
         ObjectMapper mapper = new ObjectMapper();
         ArrayList<Account> accountArrayList = mapper.readValue(file, new TypeReference<>() {});
-        if (file.length() > 0) {
+        if (file.length() == 0) {
             return null;
         }
         for (Account account : accountArrayList){
@@ -141,4 +161,16 @@ public class Controller implements Initializable {
         }
         return null;
     }
+
+    @FXML
+    public void onSignInDaily(ActionEvent event) {
+        signInText.setText("You have signed \n in today");
+        signInButton.setVisible(false);
+    }
+
+    private void loginAccount(Account account,ActionEvent event, int index) throws IOException {
+        App.lock(account);
+        switchScene(event,FXMLLoader.load(App.class.getResource(resourceListFXML[index])));
+    }
+
 }
