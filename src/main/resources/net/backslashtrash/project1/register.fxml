@@ -49,7 +49,7 @@
                <Insets top="-2.0" />
             </VBox.margin>
          </Text>
-            <Button mnemonicParsing="false" onAction="#onHome" text="Home">
+            <Button fx:id="homeButton" mnemonicParsing="false" onAction="#onHome" text="Home">
                 <VBox.margin>
                     <Insets top="-9.0" />
                 </VBox.margin>
@@ -72,7 +72,7 @@
             <PasswordField fx:id="enterPass" />
             <PasswordField fx:id="confirmPass" />
             <ChoiceBox fx:id="accountTypeSelect" prefWidth="150.0" />
-            <Button mnemonicParsing="false" onAction="#onConfirmRegister" text="Confirm" />
+            <Button fx:id="confirmLogin" mnemonicParsing="false" onAction="#onConfirmRegister" text="Confirm" />
          <Text fx:id="warningMessage" fill="RED" strokeType="OUTSIDE" strokeWidth="0.0">
             <font>
                <Font name="SwedenSans-Regular" size="16.0" />

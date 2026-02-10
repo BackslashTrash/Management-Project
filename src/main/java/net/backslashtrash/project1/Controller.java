@@ -56,6 +56,7 @@ public class Controller implements Initializable {
     public VBox rootVBox;
     public Button signUpButton;
     public Button confirmLogin;
+    public Button homeButton;
 
     private Scene scene;
     private Stage stage;
@@ -148,7 +149,8 @@ public class Controller implements Initializable {
         }
         makeButtonStyle(signUpButton, Color.web("#4A93FF"),170,90,0.32, ADD_USER,true);
         makeButtonStyle(loginButton,Color.web("#2EC27E"),170,90,0.32, LOGIN,true);
-        makeButtonStyle(confirmLogin,Color.web("#2EC27E"),60,25,0,"",false);
+        makeButtonStyle(confirmLogin,Color.web("#2EC27E"),60,30,0,"",false);
+
     }
 
     private boolean isAccountValid() {
@@ -234,17 +236,17 @@ public class Controller implements Initializable {
 
     private void makeButtonStyle(Button button, Color base, double prefWidth,double prefHeight, double glyphsize,String svgPath, boolean enableStrip) {
         if (button == null) return;
-        applyMetroTile(button, base, svgPath,prefWidth,prefHeight,glyphsize,enableStrip);
+        applyTileStyle(button, base, svgPath,prefWidth,prefHeight,glyphsize,enableStrip);
     }
 
 
 
-    private void applyMetroTile(Button button, Color accent, String svgPath,double prefWidth, double prefHeight, double glyphsize,boolean enableStrip) {
+    private void applyTileStyle(Button button, Color accent, String svgPath, double prefWidth, double prefHeight, double glyphsize, boolean enableStrip) {
         double radius = 0; // Win 8/8.1 = square tiles
         CornerRadii radii = new CornerRadii(radius);
 
         Color normal = accent;
-        Color hover = accent.deriveColor(0, 1.0, 1.10, 1.0);
+        Color hover = accent.deriveColor(0, 0.85, 1.10, 1.0);
         Color pressed = accent.deriveColor(0, 1.0, 0.82, 1.0);
 
         DropShadow shadow = new DropShadow(14, 0, 6, Color.rgb(0, 0, 0, 0.18));
@@ -263,10 +265,7 @@ public class Controller implements Initializable {
             glyph.setScaleY(s);
         }
 
-        // WRAP IN GROUP: Forces the layout container (VBox) to see the Scaled/Visual bounds
-        // instead of the original raw Path bounds.
         Group glyphContainer = new Group(glyph);
-
         Text label = new Text(button.getText());
         label.setFill(Color.WHITE);
 
@@ -299,6 +298,8 @@ public class Controller implements Initializable {
         button.setBackground(new Background(new BackgroundFill(normal, radii, Insets.EMPTY)));
         button.setBorder(Border.EMPTY);
         button.setEffect(shadow);
+
+        button.setPickOnBounds(false);
 
         button.setMinHeight(prefHeight);
         button.setPrefHeight(prefHeight);
@@ -341,5 +342,10 @@ public class Controller implements Initializable {
             button.setScaleY(button.isHover() ? 1.01 : 1.0);
             animateTo.accept(button.isHover() ? hover : normal);
         });
+    }
+
+    public void onLogout(ActionEvent event) throws IOException {
+        switchScene(event,FXMLLoader.load(App.class.getResource(resourceListFXML[Files.TITLESCREEN.INDEX])));
+        App.unlock();
     }
 }
