@@ -48,7 +48,7 @@
                 </VBox.margin>
             </TextField>
             <PasswordField fx:id="loginPass" />
-            <Button fx:id="loginButton" mnemonicParsing="false" onAction="#onConfirmLogin" text="Confirm" />
+            <Button fx:id="confirmLogin" mnemonicParsing="false" onAction="#onConfirmLogin" text="Confirm" />
          <Text fx:id="warningMessage" fill="RED" strokeType="OUTSIDE" strokeWidth="0.0" />
         </VBox>
     </HBox>

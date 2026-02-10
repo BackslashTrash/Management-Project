@@ -6,7 +6,7 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<VBox prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/22" xmlns:fx="http://javafx.com/fxml/1" fx:controller="net.backslashtrash.project1.Controller">
+<VBox fx:id="rootVBox" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/22" xmlns:fx="http://javafx.com/fxml/1" fx:controller="net.backslashtrash.project1.Controller">
    <children>
       <HBox VBox.vgrow="ALWAYS" />
        <HBox alignment="BOTTOM_CENTER" VBox.vgrow="ALWAYS">
@@ -19,12 +19,12 @@
                </Text>
                <HBox alignment="BOTTOM_CENTER" prefHeight="100.0" prefWidth="200.0" spacing="40.0">
                   <children>
-                     <Button alignment="CENTER" contentDisplay="CENTER" mnemonicParsing="false" onAction="#onSignup" prefHeight="43.0" prefWidth="102.0" text="Sign up" textAlignment="RIGHT">
+                     <Button fx:id="signUpButton" alignment="CENTER" contentDisplay="CENTER" mnemonicParsing="false" onAction="#onSignup" prefHeight="43.0" prefWidth="102.0" text="Sign up" textAlignment="RIGHT">
                         <font>
                            <Font name="Yu Gothic UI Semibold" size="20.0" />
                         </font>
                      </Button>
-                     <Button alignment="CENTER" contentDisplay="CENTER" mnemonicParsing="false" onAction="#onLogin" prefHeight="43.0" prefWidth="102.0" text="Login" textAlignment="RIGHT">
+                     <Button fx:id="loginButton" alignment="CENTER" contentDisplay="CENTER" mnemonicParsing="false" onAction="#onLogin" prefHeight="43.0" prefWidth="102.0" text="Login" textAlignment="RIGHT">
                         <font>
                            <Font name="Yu Gothic UI Semibold" size="20.0" />
                         </font>
