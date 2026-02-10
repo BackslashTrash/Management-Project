@@ -6,8 +6,8 @@ public enum Files {
     LOGIN(2),
     EMPLOYEE(3),
     EMPLOYER(4),
-    EMPLOYEELIST(5);
-
+    EMPLOYEELIST(5),
+    TASKLIST(6);
     public final int INDEX;
     Files(int index) {
         this.INDEX =index;
