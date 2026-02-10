@@ -26,9 +26,10 @@ public class App extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         Parent root = FXMLLoader.load(App.class.getResource("titleScreen.fxml"));
-        mainMenu = new Scene(root, 900, 500);
+        mainMenu = new Scene(root, 900, 600);
         stage.setTitle("Management Tool");
         stage.setScene(mainMenu);
+        stage.setMaximized(true);
         stage.show();
     }
 }

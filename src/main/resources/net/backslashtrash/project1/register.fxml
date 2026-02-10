@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
@@ -10,78 +11,110 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<VBox alignment="CENTER" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/22" xmlns:fx="http://javafx.com/fxml/1" fx:controller="net.backslashtrash.project1.Controller">
-    <HBox VBox.vgrow="ALWAYS" />
-    <HBox alignment="CENTER" spacing="20.0" VBox.vgrow="ALWAYS">
-        <VBox alignment="TOP_RIGHT" prefHeight="200.0" prefWidth="100.0" spacing="16.0">
-            <padding>
-                <Insets top="10.0" />
-            </padding>
-            <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Enter Username">
+<VBox fx:id="rootVBox" alignment="CENTER" prefHeight="600.0" prefWidth="900.0" style="-fx-background-color: #F0F2F5;" xmlns="http://javafx.com/javafx/22" xmlns:fx="http://javafx.com/fxml/1" fx:controller="net.backslashtrash.project1.Controller">
+
+    <!-- Registration Card -->
+    <VBox alignment="CENTER_LEFT" maxWidth="420.0" spacing="20.0" style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 0);">
+        <padding>
+            <Insets bottom="40.0" left="40.0" right="40.0" top="40.0" />
+        </padding>
+
+        <!-- Header -->
+        <VBox spacing="5.0">
+            <Text fill="#343a40" strokeType="OUTSIDE" strokeWidth="0.0" text="Create Account">
                 <font>
-                    <Font name="SwedenSans-Regular" size="16.0" />
+                    <Font name="System Bold" size="28.0" />
                 </font>
-            <VBox.margin>
-               <Insets top="2.0" />
-            </VBox.margin>
             </Text>
-            <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Enter Password">
+            <Text fill="#868e96" strokeType="OUTSIDE" strokeWidth="0.0" text="Join your team today.">
                 <font>
-                    <Font name="SwedenSans-Regular" size="16.0" />
+                    <Font size="14.0" />
                 </font>
-            <VBox.margin>
-               <Insets />
-            </VBox.margin>
             </Text>
-            <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Confirm Password">
-                <font>
-                    <Font name="SwedenSans-Regular" size="16.0" />
-                </font>
-            <VBox.margin>
-               <Insets top="-3.0" />
-            </VBox.margin>
-            </Text>
-         <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Select Account Type">
+        </VBox>
+
+        <!-- Form Fields -->
+        <VBox spacing="15.0">
+
+            <!-- Account Type -->
+            <VBox spacing="5.0">
+                <Label text="Account Type" textFill="#495057">
+                    <font>
+                        <Font name="System Bold" size="13.0" />
+                    </font>
+                </Label>
+                <ChoiceBox fx:id="accountTypeSelect" maxWidth="1.7976931348623157E308" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4;" />
+            </VBox>
+
+            <!-- Username -->
+            <VBox spacing="5.0">
+                <Label text="Username" textFill="#495057">
+                    <font>
+                        <Font name="System Bold" size="13.0" />
+                    </font>
+                </Label>
+                <TextField fx:id="enterUser" promptText="3-15 characters" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 8;">
+                    <font>
+                        <Font size="14.0" />
+                    </font>
+                </TextField>
+            </VBox>
+
+            <!-- Password -->
+            <VBox spacing="5.0">
+                <Label text="Password" textFill="#495057">
+                    <font>
+                        <Font name="System Bold" size="13.0" />
+                    </font>
+                </Label>
+                <PasswordField fx:id="enterPass" promptText="3-15 characters" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 8;">
+                    <font>
+                        <Font size="14.0" />
+                    </font>
+                </PasswordField>
+            </VBox>
+
+            <!-- Confirm Password -->
+            <VBox spacing="5.0">
+                <Label text="Confirm Password" textFill="#495057">
+                    <font>
+                        <Font name="System Bold" size="13.0" />
+                    </font>
+                </Label>
+                <PasswordField fx:id="confirmPass" promptText="Re-enter password" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 8;">
+                    <font>
+                        <Font size="14.0" />
+                    </font>
+                </PasswordField>
+            </VBox>
+        </VBox>
+
+        <!-- Warning Message Area -->
+        <Text fx:id="warningMessage" fill="#dc3545" strokeType="OUTSIDE" strokeWidth="0.0">
             <font>
-               <Font name="SwedenSans-Regular" size="16.0" />
+                <Font size="12.0" />
             </font>
-            <VBox.margin>
-               <Insets top="-2.0" />
-            </VBox.margin>
-         </Text>
-            <Button fx:id="homeButton" mnemonicParsing="false" onAction="#onHome" text="Home">
-                <VBox.margin>
-                    <Insets top="-9.0" />
-                </VBox.margin>
+        </Text>
+
+        <!-- Actions -->
+        <VBox spacing="15.0">
+            <Button fx:id="confirmSignUp" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onConfirmRegister" style="-fx-background-color: #4A93FF; -fx-text-fill: white; -fx-background-radius: 4; -fx-cursor: hand;" text="Sign Up">
+                <font>
+                    <Font name="System Bold" size="14.0" />
+                </font>
+                <padding>
+                    <Insets bottom="10.0" top="10.0" />
+                </padding>
             </Button>
-         <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Pass &amp; User must be 3-15 charactors">
-            <font>
-               <Font name="SwedenSans-Regular" size="16.0" />
-            </font>
-         </Text>
+
+            <HBox alignment="CENTER">
+                <Button fx:id="homeButton" mnemonicParsing="false" onAction="#onHome" style="-fx-background-color: transparent; -fx-text-fill: #6c757d; -fx-cursor: hand; -fx-underline: true;" text="Return to Home">
+                    <font>
+                        <Font size="13.0" />
+                    </font>
+                </Button>
+            </HBox>
         </VBox>
-        <VBox prefHeight="200.0" prefWidth="100.0" spacing="4.0">
-            <padding>
-                <Insets top="5.0" />
-            </padding>
-            <TextField fx:id="enterUser">
-                <VBox.margin>
-                    <Insets />
-                </VBox.margin>
-            </TextField>
-            <PasswordField fx:id="enterPass" />
-            <PasswordField fx:id="confirmPass" />
-            <ChoiceBox fx:id="accountTypeSelect" prefWidth="150.0" />
-            <Button fx:id="confirmLogin" mnemonicParsing="false" onAction="#onConfirmRegister" text="Confirm" />
-         <Text fx:id="warningMessage" fill="RED" strokeType="OUTSIDE" strokeWidth="0.0">
-            <font>
-               <Font name="SwedenSans-Regular" size="16.0" />
-            </font>
-            <VBox.margin>
-               <Insets top="5.0" />
-            </VBox.margin>
-         </Text>
-        </VBox>
-    </HBox>
-    <HBox VBox.vgrow="ALWAYS" />
+
+    </VBox>
 </VBox>

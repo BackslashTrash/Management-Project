@@ -1,5 +1,6 @@
 package net.backslashtrash.project1;
 
+import com.dlsc.gemsfx.SelectionBox;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.animation.Interpolator;
@@ -57,6 +58,8 @@ public class Controller implements Initializable {
     public Button signUpButton;
     public Button confirmLogin;
     public Button homeButton;
+    public SelectionBox chooseEmployee;
+    public Button confirmSignUp;
 
     private Scene scene;
     private Stage stage;
@@ -138,19 +141,11 @@ public class Controller implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         final String[] accountType = {"Employee", "Employer"};
         accountTypeSelect.getItems().addAll(accountType);
-        if (rootVBox!=null){
-            rootVBox.setBackground(new Background(new BackgroundFill(
-                    new LinearGradient(0,0,0,1,true, CycleMethod.NO_CYCLE,
-                            new Stop(0.0, Color.web("#E7E7E7")),
-                            new Stop(0.5, Color.web("#CFCFCF")),
-                            new Stop(1.0, Color.web("#B6B6B6"))),
-                    CornerRadii.EMPTY, Insets.EMPTY)));
-            rootVBox.setPadding(new Insets(20));
-        }
+        setBackgroundColor(rootVBox, "#E7E7E7","#CFCFCF","#B6B6B6");
         makeButtonStyle(signUpButton, Color.web("#4A93FF"),170,90,0.32, ADD_USER,true);
         makeButtonStyle(loginButton,Color.web("#2EC27E"),170,90,0.32, LOGIN,true);
         makeButtonStyle(confirmLogin,Color.web("#2EC27E"),60,30,0,"",false);
-
+        makeButtonStyle(confirmSignUp,Color.web("#4A93FF"),60,30,0,"",false);
     }
 
     private boolean isAccountValid() {
@@ -205,6 +200,25 @@ public class Controller implements Initializable {
         return null;
     }
 
+    private Account findAccount(String filename, String UUID) throws IOException{
+        File file =  new File("src/main/resources/net/backslashtrash/objects/",filename + ".json");
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayList<Account> accountArrayList = mapper.readValue(file, new TypeReference<>() {});
+        if (file.length() == 0) {
+            return null;
+        }
+        for (Account account : accountArrayList){
+            if (account.getUuid().equals(UUID)){
+                return account;
+            }
+        }
+        return null;
+    }
+
+
+
+
+
     @FXML
     public void onSignInDaily(ActionEvent event) {
         Account account =  App.getCurrentUser();
@@ -226,12 +240,21 @@ public class Controller implements Initializable {
     }
 
     @FXML
-    public void onAddEmployee(ActionEvent event) {
+    public void onAddEmployee(ActionEvent event) throws IOException {
         TextInputDialog addEmployee = new TextInputDialog();
         addEmployee.setTitle("Add employee");
         addEmployee.setHeaderText("Enter employee's UUID below");
         addEmployee.setContentText("Employee UUID:");
         Optional<String> result =  addEmployee.showAndWait();
+        if (result.isPresent()) {
+            String uuid = result.get().trim();
+            Account employeeAcc = findAccount(resourceListJSON[1], uuid);
+            if (employeeAcc == null) {
+                AccountManager.alertCreator(Alert.AlertType.WARNING, "Add employee", "Account not found!");
+            } else {
+
+            }
+        }
     }
 
     private void makeButtonStyle(Button button, Color base, double prefWidth,double prefHeight, double glyphsize,String svgPath, boolean enableStrip) {
@@ -256,7 +279,7 @@ public class Controller implements Initializable {
         glyph.setFill(Color.rgb(255, 255, 255, 0.92));
 //        glyph.setScaleX(1.3);
 //        glyph.setScaleY(1.3);
-        double targetGlyphSize = Math.min(prefWidth, prefHeight) * glyphsize; // tweak: 0.28..0.38
+        double targetGlyphSize = Math.min(prefWidth, prefHeight) * glyphsize; // tweak: 0.28-0.38
         Bounds b = glyph.getLayoutBounds();
         double max = Math.max(b.getWidth(), b.getHeight());
         if (max > 0.0001) {
@@ -292,7 +315,7 @@ public class Controller implements Initializable {
         wrapper.setAlignment(Pos.CENTER);
         VBox.setVgrow(content, Priority.ALWAYS);
 
-        button.setText(null); // we render text ourselves
+        button.setText(null);
         button.setGraphic(wrapper);
 
         button.setBackground(new Background(new BackgroundFill(normal, radii, Insets.EMPTY)));
@@ -347,5 +370,17 @@ public class Controller implements Initializable {
     public void onLogout(ActionEvent event) throws IOException {
         switchScene(event,FXMLLoader.load(App.class.getResource(resourceListFXML[Files.TITLESCREEN.INDEX])));
         App.unlock();
+    }
+
+    private void setBackgroundColor(Pane box, String col1, String col2, String col3) {
+        if (box!=null){
+            box.setBackground(new Background(new BackgroundFill(
+                    new LinearGradient(0,0,0,1,true, CycleMethod.NO_CYCLE,
+                            new Stop(0.0, Color.web(col1)),
+                            new Stop(0.5, Color.web(col2)),
+                            new Stop(1.0, Color.web(col3))),
+                    CornerRadii.EMPTY, Insets.EMPTY)));
+            box.setPadding(new Insets(20));
+        }
     }
 }
