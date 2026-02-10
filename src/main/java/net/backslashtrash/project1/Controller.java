@@ -2,13 +2,19 @@ package net.backslashtrash.project1;
 
 import com.dlsc.gemsfx.SelectionBox;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -16,11 +22,9 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Group;
-import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
+import javafx.scene.*;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -58,15 +62,25 @@ public class Controller implements Initializable {
     public Button signUpButton;
     public Button confirmLogin;
     public Button homeButton;
-    public SelectionBox chooseEmployee;
+    public SelectionBox<String> chooseEmployee;
     public Button confirmSignUp;
-
+    public ComboBox<String> filterJobSelect;
+    public TableColumn<EmployeeTableItem,String> colName;
+    public TableView<EmployeeTableItem> employeeTable;
+    public TableColumn<EmployeeTableItem,String> colJob;
+    public TableColumn<EmployeeTableItem,String> colTask;
+    public TableColumn<EmployeeTableItem,String> colStatus;
+    public TableColumn<EmployeeTableItem,CheckBox> colSelect;
+    private CheckBox selectAllCheckBox;
     private Scene scene;
     private Stage stage;
-    private Parent lastRoot;
-
+    private static final ObjectMapper objectMapper = JsonMapper
+            .builder()
+            .enable(SerializationFeature.INDENT_OUTPUT)
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false)
+            .build();
     private final String[] resourceListFXML = {
-            "titleScreen.fxml", "register.fxml", "login.fxml", "employee.fxml", "employer.fxml"
+            "titleScreen.fxml", "register.fxml", "login.fxml", "employee.fxml", "employer.fxml","employeelist.fxml"
     };
     private final String[] resourceListJSON = {
             "attendance","employee","employer"
@@ -121,14 +135,37 @@ public class Controller implements Initializable {
         switchScene(event, FXMLLoader.load(App.class.getResource(resourceListFXML[Files.TITLESCREEN.INDEX])));
     }
 
+    // --- NAVIGATION FOR EMPLOYEE LIST ---
+    @FXML
+    public void onViewEmployees(ActionEvent event) throws IOException {
+        switchScene(event, FXMLLoader.load(App.class.getResource(resourceListFXML[Files.EMPLOYEELIST.INDEX])));
+    }
+
+    @FXML
+    public void onBackToDashboard(ActionEvent event) throws IOException {
+        // Return to Employer Dashboard (Index 4)
+        switchScene(event, FXMLLoader.load(App.class.getResource(resourceListFXML[Files.EMPLOYER.INDEX])));
+    }
+
+    @FXML
+    public void onAddJob(ActionEvent event) {
+        AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Add Job", "Feature coming soon!");
+    }
+
+    @FXML
+    public void onAddTask(ActionEvent event) {
+        AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Add Task", "Feature coming soon!");
+    }
+
+    // ------------------------------------
     /*
     * Switches scene between different FXML files
     * */
     private void switchScene(ActionEvent event, Parent root) {
-        lastRoot = root;
         stage = (Stage) ((Node)event.getSource()).getScene().getWindow();
         scene = new Scene(root,stage.getWidth()-16,stage.getHeight()-39); //I don't know why subtract 16 or subtract 39, but it worked
         //System.out.println(stage.getWidth() + " " + stage.getHeight());
+
         stage.setScene(scene);
         stage.show();
     }
@@ -145,8 +182,171 @@ public class Controller implements Initializable {
         makeButtonStyle(loginButton,Color.web("#2EC27E"),170,90,0.32, LOGIN,true);
         makeButtonStyle(confirmLogin,Color.web("#2EC27E"),60,40,0,"",false);
         makeButtonStyle(confirmSignUp,Color.web("#4A93FF"),60,40,0,"",false);
+        if (chooseEmployee != null && App.getCurrentUser() != null) {
+            loadEmployerEmployees();
+        }
+
+        // --- Initialize Employee List Table with Select All ---
+        if (employeeTable != null) {
+
+            // Create the Header Checkbox
+            selectAllCheckBox = new CheckBox();
+            selectAllCheckBox.setCursor(Cursor.HAND); // Set cursor to hand
+            selectAllCheckBox.setOnAction(e -> {
+                boolean isSelected = selectAllCheckBox.isSelected();
+                for (EmployeeTableItem item : employeeTable.getItems()) {
+                    item.getSelectBox().setSelected(isSelected);
+                }
+            });
+
+            // Set Graphic to Header
+            colSelect.setGraphic(selectAllCheckBox);
+            colSelect.setText(""); // clear text so only box shows
+
+            colSelect.setCellValueFactory(new PropertyValueFactory<>("selectBox"));
+            colName.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getName()));
+            colJob.setCellValueFactory(new PropertyValueFactory<>("jobBox"));
+            colStatus.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getStatus()));
+            colTask.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTask()));
+
+            loadEmployeeListData();
+        }
+
+        if (signInButton != null && App.getCurrentUser() != null && signInText != null) {
+            try {
+                if (AccountManager.isSignedToday(App.getCurrentUser().getUuid())) {
+                    signInText.setText("You have signed \n in today");
+                    signInButton.setVisible(false);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
+    private void loadEmployerEmployees() {
+        try {
+            chooseEmployee.getItems().clear();
+            ArrayList<String> employeeIds = AccountManager.getEmployerEmployeeList(App.getCurrentUser().getUsername());
+
+            for (String uuid : employeeIds) {
+                Account emp = findAccount(resourceListJSON[1], uuid);
+                if (emp != null) {
+                    chooseEmployee.getItems().add(emp.getUsername());
+                } else {
+                    chooseEmployee.getItems().add(uuid);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void loadEmployeeListData() {
+        if (App.getCurrentUser() == null) return;
+
+        ObservableList<EmployeeTableItem> tableData = FXCollections.observableArrayList();
+
+        try {
+            ArrayList<String> employeeIds = AccountManager.getEmployerEmployeeList(App.getCurrentUser().getUsername());
+
+            for (String uuid : employeeIds) {
+                Account empAccount = findAccount(resourceListJSON[1], uuid);
+                String name = (empAccount != null) ? empAccount.getUsername() : "Unknown (" + uuid + ")";
+
+                boolean isSigned = AccountManager.isSignedToday(uuid);
+                String status = isSigned ? "Signed In" : "Absent";
+
+                // Fetch job from database
+                String job = AccountManager.getEmployeeJob(uuid);
+                String task = "None";
+
+                tableData.add(new EmployeeTableItem(uuid, name, job, status, task));
+            }
+
+            employeeTable.setItems(tableData);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    public void onRemoveSelected(ActionEvent event) {
+        if (employeeTable == null || App.getCurrentUser() == null) return;
+
+        ObservableList<EmployeeTableItem> allItems = employeeTable.getItems();
+        ArrayList<EmployeeTableItem> toRemove = new ArrayList<>();
+
+        // Find items where the checkbox is selected
+        for (EmployeeTableItem item : allItems) {
+            if (item.getSelectBox().isSelected()) {
+                toRemove.add(item);
+            }
+        }
+
+        if (toRemove.isEmpty()) {
+            AccountManager.alertCreator(Alert.AlertType.WARNING, "Remove", "No employees selected.");
+            return;
+        }
+
+        // Remove from database and table
+        String employer = App.getCurrentUser().getUsername();
+        try {
+            for (EmployeeTableItem item : toRemove) {
+                AccountManager.removeEmployeeFromEmployer(employer, item.getUuid());
+                allItems.remove(item);
+            }
+            AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Remove", "Removed " + toRemove.size() + " employees.");
+        } catch (IOException e) {
+            e.printStackTrace();
+            AccountManager.alertCreator(Alert.AlertType.ERROR, "Error", "Failed to update database.");
+        }
+    }
+
+    public static class EmployeeTableItem {
+        private final String uuid;
+        private final String name;
+        private final String status;
+        private final String task;
+
+        // Interactive Controls
+        private final CheckBox selectBox;
+        private final ComboBox<String> jobBox;
+
+        public EmployeeTableItem(String uuid, String name, String currentJob, String status, String task) {
+            this.uuid = uuid;
+            this.name = name;
+            this.status = status;
+            this.task = task;
+
+            this.selectBox = new CheckBox();
+            this.selectBox.setAlignment(Pos.CENTER);
+            this.selectBox.setCursor(Cursor.HAND); // Set cursor to hand
+
+            this.jobBox = new ComboBox<>();
+            this.jobBox.getItems().addAll();
+            this.jobBox.setValue(currentJob);
+            this.jobBox.setMaxWidth(Double.MAX_VALUE);
+
+            this.jobBox.setStyle("-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4;");
+
+            this.jobBox.setOnAction(e -> {
+                try {
+                    AccountManager.updateEmployeeJob(uuid, this.jobBox.getValue());
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            });
+        }
+
+        public String getUuid() { return uuid; }
+        public String getName() { return name; }
+        public String getStatus() { return status; }
+        public String getTask() { return task; }
+        public CheckBox getSelectBox() { return selectBox; }
+        public ComboBox<String> getJobBox() { return jobBox; }
+    }
     private boolean isAccountValid() {
         String username =  enterUser.getText();
         String pass = enterPass.getText();
@@ -167,9 +367,6 @@ public class Controller implements Initializable {
         return true;
     }
 
-    private Parent getLastRoot() {
-        return lastRoot;
-    }
 
     private boolean accountInvalid(String message){
         warningMessage.setText(message);
@@ -184,8 +381,7 @@ public class Controller implements Initializable {
 
     private Account findAccount(String filename, String user, String pass) throws IOException {
         File file =  new File("src/main/resources/net/backslashtrash/objects/",filename + ".json");
-        ObjectMapper mapper = new ObjectMapper();
-        ArrayList<Account> accountArrayList = mapper.readValue(file, new TypeReference<>() {});
+        ArrayList<Account> accountArrayList = objectMapper.readValue(file, new TypeReference<>() {});
         if (file.length() == 0) {
             return null;
         }
@@ -199,8 +395,7 @@ public class Controller implements Initializable {
 
     private Account findAccount(String filename, String UUID) throws IOException{
         File file =  new File("src/main/resources/net/backslashtrash/objects/",filename + ".json");
-        ObjectMapper mapper = new ObjectMapper();
-        ArrayList<Account> accountArrayList = mapper.readValue(file, new TypeReference<>() {});
+        ArrayList<Account> accountArrayList = objectMapper.readValue(file, new TypeReference<>() {});
         if (file.length() == 0) {
             return null;
         }
@@ -212,26 +407,28 @@ public class Controller implements Initializable {
         return null;
     }
 
-    private void loadEmployerEmployees() throws IOException {
-        chooseEmployee.getItems().clear();
-        ArrayList<String> employeeIds = AccountManager.getEmployerEmployeeList(App.getCurrentUser().getUsername());
-        for (String uuid : employeeIds) {
-            // Try to find the account to display the Username instead of the raw UUID
-            Account emp = findAccount(resourceListJSON[1], uuid);
-            if (emp != null) {
-                chooseEmployee.getItems().add(emp.getUsername());
-            } else {
-                // Fallback to UUID if account file corrupted/missing
-                chooseEmployee.getItems().add(uuid);
-            }
-        }
-    }
 
     @FXML
     public void onSignInDaily(ActionEvent event) {
         Account account =  App.getCurrentUser();
-        signInText.setText("You have signed \n in today");
-        signInButton.setVisible(false);
+        if (account == null) return;
+
+        try {
+            // Find who employs this user so we can store it in attendance
+            String employer = AccountManager.findEmployer(account.getUuid());
+            if (employer == null) employer = "Unknown";
+
+            // Mark attendance
+            AccountManager.markAttendance(account.getUuid(), employer);
+
+            // Update UI
+            signInText.setText("You have signed \n in today");
+            signInButton.setVisible(false);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            AccountManager.alertCreator(Alert.AlertType.ERROR, "Error", "Could not save attendance.");
+        }
     }
 
     private void loginAccount(Account account,ActionEvent event, int index) throws IOException {
@@ -386,4 +583,6 @@ public class Controller implements Initializable {
             box.setPadding(new Insets(20));
         }
     }
+
+
 }
