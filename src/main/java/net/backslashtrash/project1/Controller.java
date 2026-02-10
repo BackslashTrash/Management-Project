@@ -98,7 +98,6 @@ public class Controller implements Initializable {
             loginAccount(account,event,3);
             return;
         }
-
         account = findAccount(resourceListJSON[2],user,pass );
         if (account != null){
             loginAccount(account,event,4);
@@ -144,8 +143,8 @@ public class Controller implements Initializable {
         setBackgroundColor(rootVBox, "#E7E7E7","#CFCFCF","#B6B6B6");
         makeButtonStyle(signUpButton, Color.web("#4A93FF"),170,90,0.32, ADD_USER,true);
         makeButtonStyle(loginButton,Color.web("#2EC27E"),170,90,0.32, LOGIN,true);
-        makeButtonStyle(confirmLogin,Color.web("#2EC27E"),60,30,0,"",false);
-        makeButtonStyle(confirmSignUp,Color.web("#4A93FF"),60,30,0,"",false);
+        makeButtonStyle(confirmLogin,Color.web("#2EC27E"),60,40,0,"",false);
+        makeButtonStyle(confirmSignUp,Color.web("#4A93FF"),60,40,0,"",false);
     }
 
     private boolean isAccountValid() {
@@ -171,8 +170,6 @@ public class Controller implements Initializable {
     private Parent getLastRoot() {
         return lastRoot;
     }
-
-
 
     private boolean accountInvalid(String message){
         warningMessage.setText(message);
@@ -215,15 +212,24 @@ public class Controller implements Initializable {
         return null;
     }
 
-
-
-
+    private void loadEmployerEmployees() throws IOException {
+        chooseEmployee.getItems().clear();
+        ArrayList<String> employeeIds = AccountManager.getEmployerEmployeeList(App.getCurrentUser().getUsername());
+        for (String uuid : employeeIds) {
+            // Try to find the account to display the Username instead of the raw UUID
+            Account emp = findAccount(resourceListJSON[1], uuid);
+            if (emp != null) {
+                chooseEmployee.getItems().add(emp.getUsername());
+            } else {
+                // Fallback to UUID if account file corrupted/missing
+                chooseEmployee.getItems().add(uuid);
+            }
+        }
+    }
 
     @FXML
     public void onSignInDaily(ActionEvent event) {
         Account account =  App.getCurrentUser();
-
-
         signInText.setText("You have signed \n in today");
         signInButton.setVisible(false);
     }
@@ -252,7 +258,15 @@ public class Controller implements Initializable {
             if (employeeAcc == null) {
                 AccountManager.alertCreator(Alert.AlertType.WARNING, "Add employee", "Account not found!");
             } else {
-
+                Account currentUser = App.getCurrentUser();
+                // Ensure we are logged in as an employer
+                if (currentUser != null) {
+                    AccountManager.addEmployeeToEmployer(currentUser.getUsername(), uuid);
+                    AccountManager.alertCreator(Alert.AlertType.INFORMATION,"Add employee","Employee " + employeeAcc.getUsername() + " added!");
+                    loadEmployerEmployees(); // Refresh the dropdown
+                } else {
+                    AccountManager.alertCreator(Alert.AlertType.ERROR, "Error", "No employer logged in.");
+                }
             }
         }
     }
@@ -262,18 +276,13 @@ public class Controller implements Initializable {
         applyTileStyle(button, base, svgPath,prefWidth,prefHeight,glyphsize,enableStrip);
     }
 
-
-
     private void applyTileStyle(Button button, Color accent, String svgPath, double prefWidth, double prefHeight, double glyphsize, boolean enableStrip) {
         double radius = 0; // Win 8/8.1 = square tiles
         CornerRadii radii = new CornerRadii(radius);
-
         Color normal = accent;
         Color hover = accent.deriveColor(0, 0.85, 1.10, 1.0);
         Color pressed = accent.deriveColor(0, 1.0, 0.82, 1.0);
-
         DropShadow shadow = new DropShadow(14, 0, 6, Color.rgb(0, 0, 0, 0.18));
-
         SVGPath glyph = new SVGPath();
         glyph.setContent(svgPath);
         glyph.setFill(Color.rgb(255, 255, 255, 0.92));
@@ -317,13 +326,10 @@ public class Controller implements Initializable {
 
         button.setText(null);
         button.setGraphic(wrapper);
-
         button.setBackground(new Background(new BackgroundFill(normal, radii, Insets.EMPTY)));
         button.setBorder(Border.EMPTY);
         button.setEffect(shadow);
-
         button.setPickOnBounds(false);
-
         button.setMinHeight(prefHeight);
         button.setPrefHeight(prefHeight);
         button.setMinWidth(prefWidth);
@@ -347,19 +353,16 @@ public class Controller implements Initializable {
             button.setScaleX(1.01);
             button.setScaleY(1.01);
         });
-
         button.setOnMouseExited(e -> {
             if (!button.isPressed()) animateTo.accept(normal);
             button.setScaleX(1.0);
             button.setScaleY(1.0);
         });
-
         button.setOnMousePressed(e -> {
             animateTo.accept(pressed);
             button.setScaleX(0.98);
             button.setScaleY(0.98);
         });
-
         button.setOnMouseReleased(e -> {
             button.setScaleX(button.isHover() ? 1.01 : 1.0);
             button.setScaleY(button.isHover() ? 1.01 : 1.0);

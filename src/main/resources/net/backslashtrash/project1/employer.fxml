@@ -75,7 +75,7 @@
                 </VBox>
 
                 <!-- Main Content Area (Right Side) -->
-                <VBox HBox.hgrow="ALWAYS" style="-fx-background-color: white;">
+                <VBox style="-fx-background-color: white;" HBox.hgrow="ALWAYS">
                     <padding>
                         <Insets bottom="20.0" left="30.0" right="30.0" top="30.0" />
                     </padding>
@@ -85,7 +85,7 @@
                                 <Font name="System Bold" size="24.0" />
                             </font>
                         </Text>
-                        <Label text="Select an employee from the sidebar to view their attendance." textFill="#868e96">
+                        <Label text="Select an employee from the sidebar to view their schedule." textFill="#868e96">
                             <VBox.margin>
                                 <Insets top="5.0" />
                             </VBox.margin>
