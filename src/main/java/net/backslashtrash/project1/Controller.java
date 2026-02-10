@@ -44,6 +44,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Optional;
@@ -297,6 +298,13 @@ public class Controller implements Initializable {
 
             LocalTime start = LocalTime.of(startHour.getValue(), startMin.getValue());
             LocalTime end = LocalTime.of(endHour.getValue(), endMin.getValue());
+
+            // Check if start time is in the past
+            if (LocalDateTime.of(date, start).isBefore(LocalDateTime.now())) {
+                AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Time", "Task start time cannot be in the past.");
+                ae.consume(); // Prevent dialog close
+                return;
+            }
 
             if (!end.isAfter(start)) {
                 AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Time", "End time must be after start time.");

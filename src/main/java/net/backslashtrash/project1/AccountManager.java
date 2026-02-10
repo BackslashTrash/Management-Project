@@ -115,6 +115,42 @@ public class AccountManager {
 
         if (updated) {
             objectMapper.writeValue(file, employers);
+            // Also remove tasks associated with this employee for this employer
+            removeTasksForEmployee(employeeID, employerUsername);
+        }
+    }
+
+    // Helper method to clean up tasks when an employee is removed
+    private static void removeTasksForEmployee(String employeeID, String employerUsername) throws IOException {
+        // 1. Remove from tasks.json
+        File taskFile = getFile("tasks.json");
+        if (taskFile.exists()) {
+            List<Map<String, String>> tasks = objectMapper.readValue(taskFile, new TypeReference<>() {});
+            boolean tasksChanged = tasks.removeIf(task ->
+                    employeeID.equals(task.get("employeeUuid")) &&
+                            employerUsername.equals(task.get("employer"))
+            );
+
+            if (tasksChanged) {
+                objectMapper.writeValue(taskFile, tasks);
+            }
+        }
+
+        // 2. Reset task status in employee.json
+        File empFile = getFile("employee.json");
+        if (empFile.exists()) {
+            List<Map<String, Object>> employees = objectMapper.readValue(empFile, new TypeReference<>() {});
+            boolean empUpdated = false;
+            for (Map<String, Object> emp : employees) {
+                if (employeeID.equals(emp.get("uuid"))) {
+                    emp.put("task", "None");
+                    empUpdated = true;
+                    break;
+                }
+            }
+            if (empUpdated) {
+                objectMapper.writeValue(empFile, employees);
+            }
         }
     }
 
@@ -327,8 +363,9 @@ public class AccountManager {
     }
 
     /**
-     * Checks all tasks. If current time > task end time, remove the task automatically.
-     * Should be called on application startup or periodically.
+     * Checks all tasks.
+     * UPDATED LOGIC: If the task's date is strictly before today, it is considered expired and removed.
+     * This keeps the task available until the end of its scheduled day (midnight).
      */
     public static void checkExpiredTasks() throws IOException {
         File file = getFile("tasks.json");
@@ -336,27 +373,27 @@ public class AccountManager {
 
         List<Map<String, String>> tasks = objectMapper.readValue(file, new TypeReference<>() {});
         List<String> expiredIds = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDate today = LocalDate.now();
 
         for (Map<String, String> task : tasks) {
-            if (task.containsKey("rawDate") && task.containsKey("rawEnd")) {
+            if (task.containsKey("rawDate")) {
                 try {
-                    LocalDate date = LocalDate.parse(task.get("rawDate"), DATE_FORMATTER);
-                    LocalTime endTime = LocalTime.parse(task.get("rawEnd"), TIME_FORMATTER);
-                    LocalDateTime taskEndDateTime = LocalDateTime.of(date, endTime);
+                    LocalDate taskDate = LocalDate.parse(task.get("rawDate"), DATE_FORMATTER);
 
-                    if (now.isAfter(taskEndDateTime)) {
+                    // Logic: If task date is before today (e.g. task was yesterday), it expires.
+                    // If task date IS today, it stays (even if the time passed), until tomorrow arrives.
+                    if (taskDate.isBefore(today)) {
                         expiredIds.add(task.get("id"));
                     }
                 } catch (Exception e) {
-                    System.err.println("Error parsing task date/time: " + e.getMessage());
+                    System.err.println("Error parsing task date: " + e.getMessage());
                 }
             }
         }
 
         if (!expiredIds.isEmpty()) {
             removeTasks(expiredIds);
-            System.out.println("Removed " + expiredIds.size() + " expired tasks.");
+            System.out.println("Removed " + expiredIds.size() + " expired tasks (past date).");
         }
     }
 
