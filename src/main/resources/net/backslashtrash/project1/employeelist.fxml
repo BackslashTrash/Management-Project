@@ -19,7 +19,7 @@
         <!-- Header Section -->
         <HBox alignment="CENTER_LEFT" spacing="15.0">
             <children>
-                <Button mnemonicParsing="false" onAction="#onBackToEmployeeList" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand;" text="← Back">
+                <Button mnemonicParsing="false" onAction="#onBackToDashboard" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand;" text="← Back">
                     <font>
                         <Font size="13.0" />
                     </font>
@@ -55,7 +55,16 @@
                     </padding>
                 </Button>
 
-                <Button mnemonicParsing="false" onAction="#onShowTasks" style="-fx-background-color: #6c757d; -fx-text-fill: white; -fx-background-radius: 4; -fx-cursor: hand;" text="Show All Tasks">
+                <Button mnemonicParsing="false" onAction="#onShowTasks" style="-fx-background-color: #6c757d; -fx-text-fill: white; -fx-background-radius: 4; -fx-cursor: hand;" text="Show Task List">
+                    <font>
+                        <Font name="System Bold" size="13.0" />
+                    </font>
+                    <padding>
+                        <Insets bottom="8.0" left="12.0" right="12.0" top="8.0" />
+                    </padding>
+                </Button>
+
+                <Button mnemonicParsing="false" onAction="#onShowJobs" style="-fx-background-color: #6c757d; -fx-text-fill: white; -fx-background-radius: 4; -fx-cursor: hand;" text="Show Job List">
                     <font>
                         <Font name="System Bold" size="13.0" />
                     </font>
@@ -85,7 +94,7 @@
         </HBox>
 
         <!-- Table Section -->
-        <TableView fx:id="employeeTable" style="-fx-background-color: white; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 0);" VBox.vgrow="ALWAYS">
+        <TableView fx:id="employeeTable" VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 0);">
             <columns>
                 <TableColumn fx:id="colSelect" prefWidth="50.0" sortable="false" style="-fx-alignment: CENTER;" text="" />
                 <TableColumn fx:id="colName" prefWidth="200.0" text="Employee Name" />

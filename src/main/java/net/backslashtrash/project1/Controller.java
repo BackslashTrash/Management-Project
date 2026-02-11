@@ -53,6 +53,7 @@ import java.util.function.Consumer;
 import java.util.Map;
 import java.util.List;
 import java.util.Stack;
+import java.util.stream.Collectors;
 
 public class Controller implements Initializable {
 
@@ -97,15 +98,24 @@ public class Controller implements Initializable {
     @FXML public TableColumn<TaskTableItem, String> colTaskTime;
     @FXML public TableColumn<TaskTableItem, String> colTaskAssignee;
 
+    // --- Job List Screen Fields ---
+    @FXML public TableView<JobTableItem> jobTable;
+    @FXML public TableColumn<JobTableItem, CheckBox> colJobSelect;
+    @FXML public TableColumn<JobTableItem, String> colJobTitle;
+    @FXML public TableColumn<JobTableItem, String> colJobPay;
+    @FXML public TableColumn<JobTableItem, String> colJobDesc;
+
     private CheckBox selectAllCheckBox;
     private CheckBox selectAllTasksCheckBox;
+    private CheckBox selectAllJobsCheckBox;
 
     private Scene scene;
     private Stage stage;
     private Parent lastRoot;
 
+    // Added jobList.fxml at index 7
     private final String[] resourceListFXML = {
-            "titleScreen.fxml", "register.fxml", "login.fxml", "employee.fxml", "employer.fxml", "employeeList.fxml", "taskList.fxml"
+            "titleScreen.fxml", "register.fxml", "login.fxml", "employee.fxml", "employer.fxml", "employeeList.fxml", "taskList.fxml", "jobList.fxml"
     };
     private final String[] resourceListJSON = {
             "attendance","employee","employer"
@@ -216,8 +226,103 @@ public class Controller implements Initializable {
     }
 
     @FXML
+    public void onShowJobs(ActionEvent event) throws IOException {
+        navigate(event, 7); // jobList.fxml
+    }
+
+    // --- ADD JOB DIALOG ---
+    @FXML
     public void onAddJob(ActionEvent event) {
-        AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Add Job", "Feature coming soon!");
+        Dialog<JobData> dialog = new Dialog<>();
+        dialog.setTitle("Create Job");
+        dialog.setHeaderText("Create a new job profile.");
+
+        ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 20, 10, 10));
+
+        TextField titleField = new TextField();
+        titleField.setPromptText("Job Title (Max 50 chars)");
+
+        TextField payField = new TextField();
+        payField.setPromptText("Pay per Hour (e.g. 15.50)");
+
+        TextArea descArea = new TextArea();
+        descArea.setPromptText("Job Description (Max 200 chars)");
+        descArea.setPrefHeight(80);
+        descArea.setWrapText(true);
+
+        grid.add(new Label("Title:"), 0, 0);
+        grid.add(titleField, 1, 0);
+        grid.add(new Label("Pay ($/hr):"), 0, 1);
+        grid.add(payField, 1, 1);
+        grid.add(new Label("Description:"), 0, 2);
+        grid.add(descArea, 1, 2);
+
+        dialog.getDialogPane().setContent(grid);
+
+        // Validation
+        final Button saveButton = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
+        saveButton.addEventFilter(ActionEvent.ACTION, ae -> {
+            String title = titleField.getText().trim();
+            String desc = descArea.getText().trim();
+            String payStr = payField.getText().trim();
+
+            if (title.isEmpty() || desc.isEmpty() || payStr.isEmpty()) {
+                AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Input", "All fields are required.");
+                ae.consume(); return;
+            }
+
+            if (title.length() > 50) {
+                AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Input", "Title must be under 50 characters.");
+                ae.consume(); return;
+            }
+
+            if (desc.length() > 200) {
+                AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Input", "Description must be under 200 characters.");
+                ae.consume(); return;
+            }
+
+            try {
+                double pay = Double.parseDouble(payStr);
+                if (pay <= 0) {
+                    AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Input", "Pay must be a positive, non-zero number.");
+                    ae.consume();
+                }
+            } catch (NumberFormatException e) {
+                AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Input", "Pay must be a valid number.");
+                ae.consume();
+            }
+        });
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == saveButtonType) {
+                return new JobData(titleField.getText(), descArea.getText(), Double.parseDouble(payField.getText()));
+            }
+            return null;
+        });
+
+        Optional<JobData> result = dialog.showAndWait();
+
+        result.ifPresent(data -> {
+            try {
+                AccountManager.addJob(App.getCurrentUser().getUsername(), data.title, data.desc, data.pay);
+                // Refresh employee list so the new job appears in dropdowns immediately
+                loadEmployeeListData();
+                AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Job created successfully!");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private static class JobData {
+        String title; String desc; double pay;
+        JobData(String t, String d, double p) { title = t; desc = d; pay = p; }
     }
 
     // --- ADD TASK DIALOG (Robust Date/Time) ---
@@ -236,7 +341,6 @@ public class Controller implements Initializable {
             return;
         }
 
-        // Custom Dialog for Task Details
         Dialog<TaskData> dialog = new Dialog<>();
         dialog.setTitle("Assign Task");
         dialog.setHeaderText("Assign a task to " + selectedUuids.size() + " employee(s).");
@@ -254,13 +358,11 @@ public class Controller implements Initializable {
 
         DatePicker datePicker = new DatePicker(LocalDate.now());
 
-        // Start Time Spinners
         Spinner<Integer> startHour = new Spinner<>(0, 23, 9);
         Spinner<Integer> startMin = new Spinner<>(0, 59, 0);
         startHour.setEditable(true); startMin.setEditable(true);
         startHour.setPrefWidth(60); startMin.setPrefWidth(60);
 
-        // End Time Spinners
         Spinner<Integer> endHour = new Spinner<>(0, 23, 17);
         Spinner<Integer> endMin = new Spinner<>(0, 59, 0);
         endHour.setEditable(true); endMin.setEditable(true);
@@ -284,7 +386,6 @@ public class Controller implements Initializable {
 
         dialog.getDialogPane().setContent(grid);
 
-        // Validation logic
         final Button assignButton = (Button) dialog.getDialogPane().lookupButton(assignButtonType);
         assignButton.addEventFilter(ActionEvent.ACTION, ae -> {
             String desc = taskDesc.getText();
@@ -292,23 +393,20 @@ public class Controller implements Initializable {
 
             if (desc.isEmpty() || date == null) {
                 AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Input", "Please enter description and date.");
-                ae.consume(); // Prevent dialog close
-                return;
+                ae.consume(); return;
             }
 
             LocalTime start = LocalTime.of(startHour.getValue(), startMin.getValue());
             LocalTime end = LocalTime.of(endHour.getValue(), endMin.getValue());
 
-            // Check if start time is in the past
             if (LocalDateTime.of(date, start).isBefore(LocalDateTime.now())) {
                 AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Time", "Task start time cannot be in the past.");
-                ae.consume(); // Prevent dialog close
-                return;
+                ae.consume(); return;
             }
 
             if (!end.isAfter(start)) {
                 AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Time", "End time must be after start time.");
-                ae.consume(); // Prevent dialog close
+                ae.consume();
             }
         });
 
@@ -337,12 +435,8 @@ public class Controller implements Initializable {
         });
     }
 
-    // Helper class for Dialog result
     private static class TaskData {
-        String desc;
-        LocalDate date;
-        LocalTime start;
-        LocalTime end;
+        String desc; LocalDate date; LocalTime start; LocalTime end;
         TaskData(String d, LocalDate dt, LocalTime s, LocalTime e) {
             desc = d; date = dt; start = s; end = e;
         }
@@ -411,6 +505,36 @@ public class Controller implements Initializable {
         }
     }
 
+    @FXML
+    public void onRemoveSelectedJobs(ActionEvent event) {
+        if (jobTable == null || App.getCurrentUser() == null) return;
+
+        ObservableList<JobTableItem> allItems = jobTable.getItems();
+        ArrayList<JobTableItem> toRemove = new ArrayList<>();
+        List<String> idsToRemove = new ArrayList<>();
+
+        for (JobTableItem item : allItems) {
+            if (item.getSelectBox().isSelected()) {
+                toRemove.add(item);
+                idsToRemove.add(item.getId());
+            }
+        }
+
+        if (toRemove.isEmpty()) {
+            AccountManager.alertCreator(Alert.AlertType.WARNING, "Remove", "No jobs selected.");
+            return;
+        }
+
+        try {
+            AccountManager.removeJobs(idsToRemove);
+            allItems.removeAll(toRemove);
+            updateSelectAllJobsState();
+            AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Remove", "Deleted " + toRemove.size() + " jobs.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void switchScene(ActionEvent event, Parent root) {
         lastRoot = root;
         stage = (Stage) ((Node)event.getSource()).getScene().getWindow();
@@ -421,7 +545,6 @@ public class Controller implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        // --- 1. Clean up old tasks immediately ---
         try {
             AccountManager.checkExpiredTasks();
         } catch (IOException e) {
@@ -484,6 +607,28 @@ public class Controller implements Initializable {
             loadTaskListData();
         }
 
+        // --- Initialize Job List Table ---
+        if (jobTable != null) {
+            selectAllJobsCheckBox = new CheckBox();
+            selectAllJobsCheckBox.setCursor(Cursor.HAND);
+            selectAllJobsCheckBox.setOnAction(e -> {
+                boolean isSelected = selectAllJobsCheckBox.isSelected();
+                for (JobTableItem item : jobTable.getItems()) {
+                    item.getSelectBox().setSelected(isSelected);
+                }
+            });
+
+            colJobSelect.setGraphic(selectAllJobsCheckBox);
+            colJobSelect.setText("");
+
+            colJobSelect.setCellValueFactory(new PropertyValueFactory<>("selectBox"));
+            colJobTitle.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTitle()));
+            colJobPay.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getPay()));
+            colJobDesc.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getDesc()));
+
+            loadJobListData();
+        }
+
         if (signInButton != null && App.getCurrentUser() != null && signInText != null) {
             try {
                 if (AccountManager.isSignedToday(App.getCurrentUser().getUuid())) {
@@ -520,6 +665,18 @@ public class Controller implements Initializable {
         selectAllTasksCheckBox.setSelected(allSelected);
     }
 
+    private void updateSelectAllJobsState() {
+        if (selectAllJobsCheckBox == null || jobTable == null) return;
+        boolean allSelected = !jobTable.getItems().isEmpty();
+        for (JobTableItem item : jobTable.getItems()) {
+            if (!item.getSelectBox().isSelected()) {
+                allSelected = false;
+                break;
+            }
+        }
+        selectAllJobsCheckBox.setSelected(allSelected);
+    }
+
     private void loadEmployerEmployees() {
         try {
             chooseEmployee.getItems().clear();
@@ -544,6 +701,12 @@ public class Controller implements Initializable {
         ObservableList<EmployeeTableItem> tableData = FXCollections.observableArrayList();
 
         try {
+            // Fetch available jobs for the dropdown
+            List<String> availableJobs = AccountManager.getEmployerJobs(App.getCurrentUser().getUsername())
+                    .stream().map(j -> j.get("title"))
+                    .collect(Collectors.toList());
+            availableJobs.add(0, "Unassigned"); // Default option
+
             ArrayList<String> employeeIds = AccountManager.getEmployerEmployeeList(App.getCurrentUser().getUsername());
 
             for (String uuid : employeeIds) {
@@ -556,7 +719,7 @@ public class Controller implements Initializable {
                 String job = AccountManager.getEmployeeJob(uuid);
                 String task = AccountManager.getEmployeeTask(uuid);
 
-                EmployeeTableItem item = new EmployeeTableItem(uuid, name, job, status, task);
+                EmployeeTableItem item = new EmployeeTableItem(uuid, name, job, status, task, availableJobs);
                 item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> {
                     updateSelectAllState();
                 });
@@ -598,6 +761,30 @@ public class Controller implements Initializable {
         }
     }
 
+    private void loadJobListData() {
+        if (App.getCurrentUser() == null) return;
+
+        ObservableList<JobTableItem> tableData = FXCollections.observableArrayList();
+        try {
+            List<Map<String, String>> jobs = AccountManager.getEmployerJobs(App.getCurrentUser().getUsername());
+
+            for (Map<String, String> j : jobs) {
+                JobTableItem item = new JobTableItem(
+                        j.get("id"),
+                        j.get("title"),
+                        j.get("pay"),
+                        j.get("description")
+                );
+                item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllJobsState());
+                tableData.add(item);
+            }
+            jobTable.setItems(tableData);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     // --- Inner Classes ---
 
     public static class EmployeeTableItem {
@@ -608,7 +795,8 @@ public class Controller implements Initializable {
         private final CheckBox selectBox;
         private final ComboBox<String> jobBox;
 
-        public EmployeeTableItem(String uuid, String name, String currentJob, String status, String task) {
+        // Updated constructor to accept dynamic job list
+        public EmployeeTableItem(String uuid, String name, String currentJob, String status, String task, List<String> availableJobs) {
             this.uuid = uuid;
             this.name = name;
             this.status = status;
@@ -619,7 +807,7 @@ public class Controller implements Initializable {
             this.selectBox.setCursor(Cursor.HAND);
 
             this.jobBox = new ComboBox<>();
-            this.jobBox.getItems().addAll("Unassigned", "Cashier", "Manager", "Stock", "Cook", "Security", "Janitor");
+            this.jobBox.getItems().addAll(availableJobs);
             this.jobBox.setValue(currentJob);
             this.jobBox.setMaxWidth(Double.MAX_VALUE);
             this.jobBox.setStyle("-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4;");
@@ -660,6 +848,29 @@ public class Controller implements Initializable {
         public String getDescription() { return description; }
         public String getTime() { return time; }
         public String getAssignee() { return assignee; }
+        public CheckBox getSelectBox() { return selectBox; }
+    }
+
+    public static class JobTableItem {
+        private final String id;
+        private final String title;
+        private final String pay;
+        private final String desc;
+        private final CheckBox selectBox;
+
+        public JobTableItem(String id, String title, String pay, String desc) {
+            this.id = id;
+            this.title = title;
+            this.pay = pay;
+            this.desc = desc;
+            this.selectBox = new CheckBox();
+            this.selectBox.setAlignment(Pos.CENTER);
+            this.selectBox.setCursor(Cursor.HAND);
+        }
+        public String getId() { return id; }
+        public String getTitle() { return title; }
+        public String getPay() { return pay; }
+        public String getDesc() { return desc; }
         public CheckBox getSelectBox() { return selectBox; }
     }
 

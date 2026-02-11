@@ -397,6 +397,50 @@ public class AccountManager {
         }
     }
 
+    // --- Job Management ---
+
+    public static void addJob(String employer, String title, String description, double pay) throws IOException {
+        File file = getFile("jobs.json");
+        List<Map<String, String>> jobs;
+        if (file.exists() && file.length() > 0) {
+            jobs = objectMapper.readValue(file, new TypeReference<>() {});
+        } else {
+            jobs = new ArrayList<>();
+        }
+
+        Map<String, String> job = new HashMap<>();
+        job.put("id", UUID.randomUUID().toString());
+        job.put("employer", employer);
+        job.put("title", title);
+        job.put("description", description);
+        job.put("pay", String.format("%.2f", pay));
+
+        jobs.add(job);
+        objectMapper.writeValue(file, jobs);
+    }
+
+    public static List<Map<String, String>> getEmployerJobs(String employer) throws IOException {
+        File file = getFile("jobs.json");
+        if (!file.exists() || file.length() == 0) return new ArrayList<>();
+
+        List<Map<String, String>> allJobs = objectMapper.readValue(file, new TypeReference<>() {});
+        List<Map<String, String>> employerJobs = new ArrayList<>();
+        for (Map<String, String> j : allJobs) {
+            if (employer.equals(j.get("employer"))) {
+                employerJobs.add(j);
+            }
+        }
+        return employerJobs;
+    }
+
+    public static void removeJobs(List<String> jobIds) throws IOException {
+        File file = getFile("jobs.json");
+        if (!file.exists()) return;
+        List<Map<String, String>> jobs = objectMapper.readValue(file, new TypeReference<>() {});
+        jobs.removeIf(j -> jobIds.contains(j.get("id")));
+        objectMapper.writeValue(file, jobs);
+    }
+
     public static String getEmployeeTask(String employeeUuid) throws IOException {
         File file = getFile("employee.json");
         if (!file.exists()) return "None";

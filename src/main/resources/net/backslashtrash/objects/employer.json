@@ -1,8 +1,9 @@
 [ {
   "username" : "111",
-  "password" : "111"
+  "password" : "111",
+  "employees" : [ ]
 }, {
   "username" : "222",
   "password" : "222",
-  "employees" : [ "a0161022-8fe9-38f5-95a7-2dd730294d87" ]
+  "employees" : [ ]
 } ]
