@@ -47,6 +47,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +70,12 @@ public class Controller implements Initializable {
     // --- Table Data Models ---
     private final ObservableList<EmployeeTableItem> masterData = FXCollections.observableArrayList();
     private final FilteredList<EmployeeTableItem> filteredData = new FilteredList<>(masterData, p -> true);
+
+    private final ObservableList<TaskTableItem> masterTaskData = FXCollections.observableArrayList();
+    private final FilteredList<TaskTableItem> filteredTaskData = new FilteredList<>(masterTaskData, p -> true);
+
+    private final ObservableList<JobTableItem> masterJobData = FXCollections.observableArrayList();
+    private final FilteredList<JobTableItem> filteredJobData = new FilteredList<>(masterJobData, p -> true);
 
     @FXML public ChoiceBox<String> accountTypeSelect = new ChoiceBox<>();
     public TextField enterUser;
@@ -94,13 +101,15 @@ public class Controller implements Initializable {
     @FXML public TableColumn<EmployeeTableItem, String> colStatus;
     @FXML public TableColumn<EmployeeTableItem, String> colTask;
     @FXML public ComboBox<String> filterJobSelect;
+    @FXML public TextField searchEmployeeField;
 
     // --- Task List Screen Fields ---
     @FXML public TableView<TaskTableItem> taskTable;
     @FXML public TableColumn<TaskTableItem, CheckBox> colTaskSelect;
     @FXML public TableColumn<TaskTableItem, String> colTaskDesc;
     @FXML public TableColumn<TaskTableItem, String> colTaskTime;
-    @FXML public TableColumn<TaskTableItem, HBox> colTaskAssignee; // Updated to HBox to hold Button
+    @FXML public TableColumn<TaskTableItem, HBox> colTaskAssignee;
+    @FXML public TextField searchTaskField;
 
     // --- Job List Screen Fields ---
     @FXML public TableView<JobTableItem> jobTable;
@@ -108,6 +117,7 @@ public class Controller implements Initializable {
     @FXML public TableColumn<JobTableItem, String> colJobTitle;
     @FXML public TableColumn<JobTableItem, String> colJobPay;
     @FXML public TableColumn<JobTableItem, String> colJobDesc;
+    @FXML public TextField searchJobField;
 
     private CheckBox selectAllCheckBox;
     private CheckBox selectAllTasksCheckBox;
@@ -309,6 +319,7 @@ public class Controller implements Initializable {
             try {
                 AccountManager.addJob(App.getCurrentUser().getUsername(), data.title, data.desc, data.pay);
                 loadEmployeeListData();
+                loadJobListData();
                 AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Job created successfully!");
             } catch (IOException e) {
                 e.printStackTrace();
@@ -418,6 +429,7 @@ public class Controller implements Initializable {
             try {
                 AccountManager.assignTask(selectedUuids, data.desc, data.date, data.start, data.end, App.getCurrentUser().getUsername());
                 loadEmployeeListData();
+                loadTaskListData();
                 AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Task assigned successfully!");
             } catch (IOException e) {
                 e.printStackTrace();
@@ -596,7 +608,7 @@ public class Controller implements Initializable {
 
         try {
             AccountManager.removeTasks(idsToRemove);
-            allItems.removeAll(toRemove);
+            masterTaskData.removeAll(toRemove);
             updateSelectAllTasksState();
             AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Remove", "Deleted selected tasks.");
         } catch (IOException e) {
@@ -626,7 +638,7 @@ public class Controller implements Initializable {
 
         try {
             AccountManager.removeJobs(idsToRemove);
-            allItems.removeAll(toRemove);
+            masterJobData.removeAll(toRemove);
             updateSelectAllJobsState();
             AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Remove", "Deleted " + toRemove.size() + " jobs.");
         } catch (IOException e) {
@@ -682,17 +694,16 @@ public class Controller implements Initializable {
 
             employeeTable.setItems(filteredData);
 
-            if (filterJobSelect != null) {
-                filterJobSelect.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-                    filteredData.setPredicate(employee -> {
-                        if (newValue == null || "All Jobs".equals(newValue)) {
-                            return true;
-                        }
-                        String empJob = employee.getJobBox().getValue();
-                        return newValue.equals(empJob);
-                    });
-                });
+            // Search field listener
+            if (searchEmployeeField != null) {
+                searchEmployeeField.textProperty().addListener((observable, oldValue, newValue) -> updateEmployeeFilter());
             }
+
+            // Filter dropdown listener
+            if (filterJobSelect != null) {
+                filterJobSelect.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> updateEmployeeFilter());
+            }
+
             loadEmployeeListData();
         }
 
@@ -713,9 +724,19 @@ public class Controller implements Initializable {
             colTaskSelect.setCellValueFactory(new PropertyValueFactory<>("selectBox"));
             colTaskDesc.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getDescription()));
             colTaskTime.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTime()));
-
-            // Map the assignee column to the dynamically created HBox
             colTaskAssignee.setCellValueFactory(new PropertyValueFactory<>("assigneeBox"));
+
+            taskTable.setItems(filteredTaskData);
+
+            // Search field listener
+            if (searchTaskField != null) {
+                searchTaskField.textProperty().addListener((observable, oldValue, newValue) -> {
+                    filteredTaskData.setPredicate(task -> {
+                        if (newValue == null || newValue.trim().isEmpty()) return true;
+                        return task.getDescription().toLowerCase().contains(newValue.toLowerCase());
+                    });
+                });
+            }
 
             loadTaskListData();
         }
@@ -739,6 +760,18 @@ public class Controller implements Initializable {
             colJobPay.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getPay()));
             colJobDesc.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getDesc()));
 
+            jobTable.setItems(filteredJobData);
+
+            // Search field listener
+            if (searchJobField != null) {
+                searchJobField.textProperty().addListener((observable, oldValue, newValue) -> {
+                    filteredJobData.setPredicate(job -> {
+                        if (newValue == null || newValue.trim().isEmpty()) return true;
+                        return job.getTitle().toLowerCase().contains(newValue.toLowerCase());
+                    });
+                });
+            }
+
             loadJobListData();
         }
 
@@ -752,6 +785,25 @@ public class Controller implements Initializable {
                 e.printStackTrace();
             }
         }
+    }
+
+    private void updateEmployeeFilter() {
+        String searchString = searchEmployeeField != null ? searchEmployeeField.getText() : null;
+        String jobFilter = filterJobSelect != null ? filterJobSelect.getValue() : null;
+
+        filteredData.setPredicate(employee -> {
+            boolean matchesSearch = true;
+            if (searchString != null && !searchString.trim().isEmpty()) {
+                matchesSearch = employee.getName().toLowerCase().contains(searchString.toLowerCase());
+            }
+
+            boolean matchesJob = true;
+            if (jobFilter != null && !"All Jobs".equals(jobFilter)) {
+                matchesJob = jobFilter.equals(employee.getJobBox().getValue());
+            }
+
+            return matchesSearch && matchesJob;
+        });
     }
 
     private void updateSelectAllState() {
@@ -846,6 +898,10 @@ public class Controller implements Initializable {
                 item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllState());
                 masterData.add(item);
             }
+
+            // Alphabetically sort the employees by Name
+            masterData.sort(Comparator.comparing(EmployeeTableItem::getName, String.CASE_INSENSITIVE_ORDER));
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -853,8 +909,8 @@ public class Controller implements Initializable {
 
     private void loadTaskListData() {
         if (App.getCurrentUser() == null) return;
+        masterTaskData.clear();
 
-        ObservableList<TaskTableItem> tableData = FXCollections.observableArrayList();
         try {
             List<Map<String, String>> tasks = AccountManager.getAllTasks(App.getCurrentUser().getUsername());
 
@@ -888,13 +944,14 @@ public class Controller implements Initializable {
                 String time = rawData.get("time");
                 String namesStr = String.join(", ", assigneeNames);
 
-                // Pass the controller instance so the button inside TaskTableItem can trigger the dialog
                 TaskTableItem item = new TaskTableItem(ids, desc, time, namesStr, assigneeUuids, rawData, this);
 
                 item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllTasksState());
-                tableData.add(item);
+                masterTaskData.add(item);
             }
-            taskTable.setItems(tableData);
+
+            // Alphabetically sort the tasks by Description
+            masterTaskData.sort(Comparator.comparing(TaskTableItem::getDescription, String.CASE_INSENSITIVE_ORDER));
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -903,8 +960,8 @@ public class Controller implements Initializable {
 
     private void loadJobListData() {
         if (App.getCurrentUser() == null) return;
+        masterJobData.clear();
 
-        ObservableList<JobTableItem> tableData = FXCollections.observableArrayList();
         try {
             List<Map<String, String>> jobs = AccountManager.getEmployerJobs(App.getCurrentUser().getUsername());
 
@@ -913,9 +970,11 @@ public class Controller implements Initializable {
                         j.get("id"), j.get("title"), j.get("pay"), j.get("description")
                 );
                 item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllJobsState());
-                tableData.add(item);
+                masterJobData.add(item);
             }
-            jobTable.setItems(tableData);
+
+            // Alphabetically sort the jobs by Title
+            masterJobData.sort(Comparator.comparing(JobTableItem::getTitle, String.CASE_INSENSITIVE_ORDER));
 
         } catch (IOException e) {
             e.printStackTrace();

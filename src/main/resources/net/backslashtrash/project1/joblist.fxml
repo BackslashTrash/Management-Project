@@ -5,6 +5,7 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
@@ -42,6 +43,7 @@
                         <Font size="13.0" />
                     </font>
                 </Label>
+                <TextField fx:id="searchJobField" prefWidth="220.0" promptText="Search by title..." style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 6;" />
                 <Region HBox.hgrow="ALWAYS" />
                 <Button mnemonicParsing="false" onAction="#onRemoveSelectedJobs" style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-background-radius: 4; -fx-cursor: hand;" text="Delete Selected">
                     <font>

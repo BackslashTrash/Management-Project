@@ -6,6 +6,7 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
@@ -38,6 +39,7 @@
                 <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
             </padding>
             <children>
+                <TextField fx:id="searchEmployeeField" prefWidth="200.0" promptText="Search by name..." style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 6;" />
                 <Button mnemonicParsing="false" onAction="#onAddJob" style="-fx-background-color: #28a745; -fx-text-fill: white; -fx-background-radius: 4; -fx-cursor: hand;" text="+ Add Job">
                     <font>
                         <Font name="System Bold" size="13.0" />
