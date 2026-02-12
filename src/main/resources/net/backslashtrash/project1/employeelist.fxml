@@ -20,7 +20,8 @@
         <!-- Header Section -->
         <HBox alignment="CENTER_LEFT" spacing="15.0">
             <children>
-                <Button mnemonicParsing="false" onAction="#onBackToDashboard" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand;" text="← Back">
+                <!-- FIX: Changed action to #onBack -->
+                <Button mnemonicParsing="false" onAction="#onBack" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand;" text="← Back">
                     <font>
                         <Font size="13.0" />
                     </font>

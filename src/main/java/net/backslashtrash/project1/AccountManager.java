@@ -264,7 +264,7 @@ public class AccountManager {
      * Assigns a task to a list of employees.
      * Updates both tasks.json (log) and employee.json (current status).
      */
-    public static void assignTask(List<String> employeeUuids, String description, LocalDate date, LocalTime start, LocalTime end, String employerUsername) throws IOException {
+    public static void assignTask(List<String> employeeUuids, String title, String description, LocalDate date, LocalTime start, LocalTime end, String employerUsername) throws IOException {
         String timeString = start.format(TIME_FORMATTER) + " - " + end.format(TIME_FORMATTER);
         String dateString = date.format(DATE_FORMATTER);
 
@@ -275,7 +275,8 @@ public class AccountManager {
             boolean empUpdated = false;
             for (Map<String, Object> emp : employees) {
                 if (employeeUuids.contains(emp.get("uuid"))) {
-                    emp.put("task", description + " (" + timeString + ")");
+                    // Update format to include Title
+                    emp.put("task", title + ": " + description + " (" + timeString + ")");
                     empUpdated = true;
                 }
             }
@@ -296,6 +297,7 @@ public class AccountManager {
             newTask.put("id", UUID.randomUUID().toString());
             newTask.put("employeeUuid", uuid);
             newTask.put("employer", employerUsername);
+            newTask.put("title", title);
             newTask.put("description", description);
             // Store display string
             newTask.put("time", dateString + " " + timeString);
@@ -364,8 +366,7 @@ public class AccountManager {
 
     /**
      * Checks all tasks.
-     * UPDATED LOGIC: If the task's date is strictly before today, it is considered expired and removed.
-     * This keeps the task available until the end of its scheduled day (midnight).
+     * If the task's date is strictly before today, it is considered expired and removed.
      */
     public static void checkExpiredTasks() throws IOException {
         File file = getFile("tasks.json");
@@ -381,7 +382,6 @@ public class AccountManager {
                     LocalDate taskDate = LocalDate.parse(task.get("rawDate"), DATE_FORMATTER);
 
                     // Logic: If task date is before today (e.g. task was yesterday), it expires.
-                    // If task date IS today, it stays (even if the time passed), until tomorrow arrives.
                     if (taskDate.isBefore(today)) {
                         expiredIds.add(task.get("id"));
                     }

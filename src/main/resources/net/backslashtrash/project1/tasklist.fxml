@@ -19,7 +19,8 @@
         <!-- Header Section -->
         <HBox alignment="CENTER_LEFT" spacing="15.0">
             <children>
-                <Button mnemonicParsing="false" onAction="#onOpenEmployeeList" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand;" text="← Back">
+                <!-- FIX: Changed action to #onBack -->
+                <Button mnemonicParsing="false" onAction="#onBack" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand;" text="← Back">
                     <font>
                         <Font size="13.0" />
                     </font>
@@ -43,7 +44,7 @@
                         <Font size="13.0" />
                     </font>
                 </Label>
-                <TextField fx:id="searchTaskField" prefWidth="220.0" promptText="Search by description..." style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 6;" />
+                <TextField fx:id="searchTaskField" prefWidth="220.0" promptText="Search by task title..." style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 6;" />
                 <Region HBox.hgrow="ALWAYS" />
                 <Button mnemonicParsing="false" onAction="#onRemoveSelectedTasks" style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-background-radius: 4; -fx-cursor: hand;" text="Delete Selected">
                     <font>
@@ -60,6 +61,7 @@
         <TableView fx:id="taskTable" VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 0);">
             <columns>
                 <TableColumn fx:id="colTaskSelect" prefWidth="50.0" sortable="false" style="-fx-alignment: CENTER;" text="" />
+                <TableColumn fx:id="colTaskTitle" prefWidth="150.0" text="Title" />
                 <TableColumn fx:id="colTaskDesc" prefWidth="300.0" text="Task Description" />
                 <TableColumn fx:id="colTaskTime" prefWidth="150.0" text="Time" />
                 <TableColumn fx:id="colTaskAssignee" prefWidth="250.0" text="Assigned To" />

@@ -109,6 +109,7 @@ public class Controller implements Initializable {
     // --- Task List Screen Fields ---
     @FXML public TableView<TaskTableItem> taskTable;
     @FXML public TableColumn<TaskTableItem, CheckBox> colTaskSelect;
+    @FXML public TableColumn<TaskTableItem, String> colTaskTitle;
     @FXML public TableColumn<TaskTableItem, String> colTaskDesc;
     @FXML public TableColumn<TaskTableItem, String> colTaskTime;
     @FXML public TableColumn<TaskTableItem, HBox> colTaskAssignee;
@@ -363,6 +364,9 @@ public class Controller implements Initializable {
         grid.setVgap(10);
         grid.setPadding(new Insets(20, 20, 10, 10));
 
+        TextField taskTitle = new TextField();
+        taskTitle.setPromptText("Task Title (Max 50 chars)");
+
         TextField taskDesc = new TextField();
         taskDesc.setPromptText("Task Description");
 
@@ -378,31 +382,43 @@ public class Controller implements Initializable {
         endHour.setEditable(true); endMin.setEditable(true);
         endHour.setPrefWidth(60); endMin.setPrefWidth(60);
 
-        grid.add(new Label("Description:"), 0, 0);
-        grid.add(taskDesc, 1, 0, 3, 1);
-        grid.add(new Label("Date:"), 0, 1);
-        grid.add(datePicker, 1, 1, 3, 1);
-        grid.add(new Label("Start Time:"), 0, 2);
+        grid.add(new Label("Title:"), 0, 0);
+        grid.add(taskTitle, 1, 0, 3, 1);
+
+        grid.add(new Label("Description:"), 0, 1);
+        grid.add(taskDesc, 1, 1, 3, 1);
+
+        grid.add(new Label("Date:"), 0, 2);
+        grid.add(datePicker, 1, 2, 3, 1);
+
+        grid.add(new Label("Start Time:"), 0, 3);
 
         HBox startBox = new HBox(5, startHour, new Label(":"), startMin);
         startBox.setAlignment(Pos.CENTER_LEFT);
-        grid.add(startBox, 1, 2, 3, 1);
+        grid.add(startBox, 1, 3, 3, 1);
 
-        grid.add(new Label("End Time:"), 0, 3);
+        grid.add(new Label("End Time:"), 0, 4);
         HBox endBox = new HBox(5, endHour, new Label(":"), endMin);
         endBox.setAlignment(Pos.CENTER_LEFT);
-        grid.add(endBox, 1, 3, 3, 1);
+        grid.add(endBox, 1, 4, 3, 1);
 
         dialog.getDialogPane().setContent(grid);
 
         final Button assignButton = (Button) dialog.getDialogPane().lookupButton(assignButtonType);
         assignButton.addEventFilter(ActionEvent.ACTION, ae -> {
+            String title = taskTitle.getText();
             String desc = taskDesc.getText();
             LocalDate date = datePicker.getValue();
-            if (desc.isEmpty() || date == null) {
-                AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Input", "Please enter description and date.");
+
+            if (title.isEmpty() || desc.isEmpty() || date == null) {
+                AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Input", "All fields are required.");
                 ae.consume(); return;
             }
+            if (title.length() > 50) {
+                AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Input", "Title must be under 50 characters.");
+                ae.consume(); return;
+            }
+
             LocalTime start = LocalTime.of(startHour.getValue(), startMin.getValue());
             LocalTime end = LocalTime.of(endHour.getValue(), endMin.getValue());
             if (LocalDateTime.of(date, start).isBefore(LocalDateTime.now())) {
@@ -418,6 +434,7 @@ public class Controller implements Initializable {
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == assignButtonType) {
                 return new TaskData(
+                        taskTitle.getText(),
                         taskDesc.getText(),
                         datePicker.getValue(),
                         LocalTime.of(startHour.getValue(), startMin.getValue()),
@@ -430,7 +447,7 @@ public class Controller implements Initializable {
         Optional<TaskData> result = dialog.showAndWait();
         result.ifPresent(data -> {
             try {
-                AccountManager.assignTask(selectedUuids, data.desc, data.date, data.start, data.end, App.getCurrentUser().getUsername());
+                AccountManager.assignTask(selectedUuids, data.title, data.desc, data.date, data.start, data.end, App.getCurrentUser().getUsername());
                 loadEmployeeListData();
                 loadTaskListData();
                 AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Task assigned successfully!");
@@ -441,9 +458,9 @@ public class Controller implements Initializable {
     }
 
     private static class TaskData {
-        String desc; LocalDate date; LocalTime start; LocalTime end;
-        TaskData(String d, LocalDate dt, LocalTime s, LocalTime e) {
-            desc = d; date = dt; start = s; end = e;
+        String title; String desc; LocalDate date; LocalTime start; LocalTime end;
+        TaskData(String t, String d, LocalDate dt, LocalTime s, LocalTime e) {
+            title = t; desc = d; date = dt; start = s; end = e;
         }
     }
 
@@ -451,7 +468,7 @@ public class Controller implements Initializable {
     public void openAddAssigneeDialog(TaskTableItem taskItem, List<String> currentAssigneeUuids, Map<String, String> rawTaskData) {
         Dialog<List<String>> dialog = new Dialog<>();
         dialog.setTitle("Add Assignees");
-        dialog.setHeaderText("Add more employees to task: \n" + taskItem.getDescription());
+        dialog.setHeaderText("Add more employees to task: \n" + taskItem.getTitle()); // Changed to Title
 
         ButtonType assignButtonType = new ButtonType("Add Selected", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(assignButtonType, ButtonType.CANCEL);
@@ -529,23 +546,25 @@ public class Controller implements Initializable {
                 try {
                     if (rawTaskData.containsKey("date")) {
                         date = LocalDate.parse(rawTaskData.get("date"));
+                    } else if (rawTaskData.containsKey("rawDate")) {
+                        date = LocalDate.parse(rawTaskData.get("rawDate"));
                     }
                     if (rawTaskData.containsKey("start")) {
                         start = LocalTime.parse(rawTaskData.get("start"));
-                    } else if (rawTaskData.containsKey("startTime")) {
-                        start = LocalTime.parse(rawTaskData.get("startTime"));
+                    } else if (rawTaskData.containsKey("rawStart")) {
+                        start = LocalTime.parse(rawTaskData.get("rawStart"));
                     }
                     if (rawTaskData.containsKey("end")) {
                         end = LocalTime.parse(rawTaskData.get("end"));
-                    } else if (rawTaskData.containsKey("endTime")) {
-                        end = LocalTime.parse(rawTaskData.get("endTime"));
+                    } else if (rawTaskData.containsKey("rawEnd")) {
+                        end = LocalTime.parse(rawTaskData.get("rawEnd"));
                     }
                 } catch (Exception e) {
                     System.out.println("Could not parse exact date/time from task data. Using defaults.");
                 }
 
                 try {
-                    AccountManager.assignTask(newUuids, taskItem.getDescription(), date, start, end, App.getCurrentUser().getUsername());
+                    AccountManager.assignTask(newUuids, taskItem.getTitle(), taskItem.getDescription(), date, start, end, App.getCurrentUser().getUsername());
                     loadTaskListData(); // Refresh UI to show the grouped task
                     AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Added " + newUuids.size() + " new employee(s) to the task!");
                 } catch (IOException e) {
@@ -643,7 +662,7 @@ public class Controller implements Initializable {
             AccountManager.removeJobs(idsToRemove);
             masterJobData.removeAll(toRemove);
             updateSelectAllJobsState();
-            AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Remove", "Deleted " + toRemove.size() + " job(s).");
+            AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Remove", "Deleted " + toRemove.size() + " jobs.");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -680,9 +699,7 @@ public class Controller implements Initializable {
             CalendarView calendarView = new CalendarView();
             calendarView.setShowDeveloperConsole(false); // hides standard debug tools
             calendarView.setShowAddCalendarButton(false);
-
             calendarContainer.getChildren().add(calendarView);
-
         }
 
         // --- Initialize Employee List Table ---
@@ -734,18 +751,19 @@ public class Controller implements Initializable {
             colTaskSelect.setText("");
 
             colTaskSelect.setCellValueFactory(new PropertyValueFactory<>("selectBox"));
+            colTaskTitle.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTitle())); // NEW
             colTaskDesc.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getDescription()));
             colTaskTime.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTime()));
             colTaskAssignee.setCellValueFactory(new PropertyValueFactory<>("assigneeBox"));
 
             taskTable.setItems(filteredTaskData);
 
-            // Search field listener
+            // Search field listener - SEARCH BY TITLE
             if (searchTaskField != null) {
                 searchTaskField.textProperty().addListener((observable, oldValue, newValue) -> {
                     filteredTaskData.setPredicate(task -> {
                         if (newValue == null || newValue.trim().isEmpty()) return true;
-                        return task.getDescription().toLowerCase().contains(newValue.toLowerCase());
+                        return task.getTitle().toLowerCase().contains(newValue.toLowerCase()); // Changed to getTitle()
                     });
                 });
             }
@@ -926,10 +944,11 @@ public class Controller implements Initializable {
         try {
             List<Map<String, String>> tasks = AccountManager.getAllTasks(App.getCurrentUser().getUsername());
 
-            // 1. Group Tasks by exactly matching description and time.
+            // 1. Group Tasks by exactly matching TITLE, description and time.
             Map<String, List<Map<String, String>>> groupedTasks = new HashMap<>();
             for (Map<String, String> t : tasks) {
-                String key = t.get("description") + "|||" + t.get("time");
+                String title = t.getOrDefault("title", "");
+                String key = title + "|||" + t.get("description") + "|||" + t.get("time");
                 groupedTasks.computeIfAbsent(key, k -> new ArrayList<>()).add(t);
             }
 
@@ -952,18 +971,19 @@ public class Controller implements Initializable {
                 }
 
                 Map<String, String> rawData = group.get(0);
+                String title = rawData.getOrDefault("title", "");
                 String desc = rawData.get("description");
                 String time = rawData.get("time");
                 String namesStr = String.join(", ", assigneeNames);
 
-                TaskTableItem item = new TaskTableItem(ids, desc, time, namesStr, assigneeUuids, rawData, this);
+                TaskTableItem item = new TaskTableItem(ids, title, desc, time, namesStr, assigneeUuids, rawData, this);
 
                 item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllTasksState());
                 masterTaskData.add(item);
             }
 
-            // Alphabetically sort the tasks by Description
-            masterTaskData.sort(Comparator.comparing(TaskTableItem::getDescription, String.CASE_INSENSITIVE_ORDER));
+            // Alphabetically sort the tasks by Title
+            masterTaskData.sort(Comparator.comparing(TaskTableItem::getTitle, String.CASE_INSENSITIVE_ORDER));
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -1036,27 +1056,27 @@ public class Controller implements Initializable {
     }
 
     public static class TaskTableItem {
-        private final List<String> ids; // Changed from single ID to a list of IDs to support grouped deletion
+        private final List<String> ids;
+        private final String title; // NEW
         private final String description;
         private final String time;
         private final CheckBox selectBox;
 
         private final HBox assigneeBox;
 
-        public TaskTableItem(List<String> ids, String description, String time, String assigneesText,
+        public TaskTableItem(List<String> ids, String title, String description, String time, String assigneesText,
                              List<String> currentAssigneeUuids, Map<String, String> rawTaskData, Controller controller) {
             this.ids = ids;
+            this.title = title;
             this.description = description;
             this.time = time;
             this.selectBox = new CheckBox();
             this.selectBox.setAlignment(Pos.CENTER);
             this.selectBox.setCursor(Cursor.HAND);
 
-            // Build Assignee Layout Component
             Label label = new Label(assigneesText);
             label.setWrapText(true);
 
-            // Create a spacer to push the button to the right
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -1065,18 +1085,18 @@ public class Controller implements Initializable {
             addButton.setCursor(Cursor.HAND);
             addButton.setTooltip(new Tooltip("Add more employees to this task"));
 
-            // Call the Dialog when clicked
             addButton.setOnAction(e -> controller.openAddAssigneeDialog(this, currentAssigneeUuids, rawTaskData));
 
             this.assigneeBox = new HBox(10, label, spacer, addButton);
             this.assigneeBox.setAlignment(Pos.CENTER_LEFT);
         }
 
-        public List<String> getIds() { return ids; } // Return all grouped IDs for deletion
+        public List<String> getIds() { return ids; }
+        public String getTitle() { return title; } // NEW
         public String getDescription() { return description; }
         public String getTime() { return time; }
         public CheckBox getSelectBox() { return selectBox; }
-        public HBox getAssigneeBox() { return assigneeBox; } // Required for PropertyValueFactory
+        public HBox getAssigneeBox() { return assigneeBox; }
     }
 
     public static class JobTableItem {
