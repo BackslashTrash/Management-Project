@@ -41,6 +41,9 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import com.calendarfx.view.CalendarView;
+import com.calendarfx.model.Calendar;
+import com.calendarfx.model.CalendarSource;
+import com.calendarfx.model.Entry;
 
 import java.io.File;
 import java.io.IOException;
@@ -81,6 +84,9 @@ public class Controller implements Initializable {
 
     @FXML public ChoiceBox<String> accountTypeSelect = new ChoiceBox<>();
     @FXML public StackPane calendarContainer;
+
+    private final Calendar workCalendar = new Calendar("Work Tasks");
+    private final Map<String, String> nameToUuidMap = new HashMap<>();
     public TextField enterUser;
     public PasswordField enterPass;
     public PasswordField confirmPass;
@@ -179,6 +185,68 @@ public class Controller implements Initializable {
 
     public void onLogin(ActionEvent event) throws IOException {
         navigate(event, Files.LOGIN.INDEX);
+    }
+
+    // --- CALENDAR LOGIC (Updated with Fallback) ---
+    private void refreshCalendar(String uuid) {
+        System.out.println("Refreshing calendar for UUID: " + uuid);
+        workCalendar.clear();
+        try {
+            List<Map<String, String>> tasks = AccountManager.getTasksForEmployee(uuid);
+            System.out.println("Found " + tasks.size() + " tasks for employee.");
+
+            for (Map<String, String> t : tasks) {
+                String title = t.getOrDefault("title", "Task");
+                // Safety check if title is null or empty
+                if (title == null || title.trim().isEmpty()) title = "Task";
+
+                String desc = t.getOrDefault("description", "");
+
+                LocalDate date = null;
+                LocalTime start = null;
+                LocalTime end = null;
+
+                // 1. Try parsing raw ISO fields (New Format)
+                if (t.containsKey("rawDate") && t.containsKey("rawStart") && t.containsKey("rawEnd")) {
+                    try {
+                        date = LocalDate.parse(t.get("rawDate"));
+                        start = LocalTime.parse(t.get("rawStart"));
+                        end = LocalTime.parse(t.get("rawEnd"));
+                    } catch (Exception e) {
+                        System.out.println("Error parsing raw fields: " + e.getMessage());
+                    }
+                }
+                // 2. Fallback: Parse the display string "yyyy-MM-dd HH:mm - HH:mm" (Old Format)
+                else if (t.containsKey("time")) {
+                    try {
+                        // Expected format in 'time': "2025-10-27 09:00 - 17:00"
+                        // Split by space
+                        String timeStr = t.get("time");
+                        String[] parts = timeStr.split(" ");
+                        // parts[0] = date, parts[1] = start, parts[2] = "-", parts[3] = end
+                        if (parts.length >= 4) {
+                            date = LocalDate.parse(parts[0]);
+                            start = LocalTime.parse(parts[1]);
+                            end = LocalTime.parse(parts[3]);
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Error parsing fallback time string: " + e.getMessage());
+                    }
+                }
+
+                if (date != null && start != null && end != null) {
+                    Entry<String> entry = new Entry<>(title);
+                    entry.setInterval(date, start, date, end);
+                    // entry.setLocation(desc);
+                    workCalendar.addEntry(entry);
+                    System.out.println("Added entry: " + title + " at " + date + " " + start + "-" + end);
+                } else {
+                    System.out.println("Skipping task due to parsing failure: " + title);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @FXML
@@ -695,11 +763,34 @@ public class Controller implements Initializable {
             loadEmployerEmployees();
         }
 
+        // --- Setup CalendarFX ---
         if (calendarContainer != null) {
             CalendarView calendarView = new CalendarView();
-            calendarView.setShowDeveloperConsole(false); // hides standard debug tools
+            calendarView.setShowDeveloperConsole(false);
             calendarView.setShowAddCalendarButton(false);
+
+            // Set our custom calendar source
+            workCalendar.setStyle(Calendar.Style.STYLE1); // Set a color style
+            CalendarSource myCalendarSource = new CalendarSource("My Calendars");
+            myCalendarSource.getCalendars().add(workCalendar);
+            calendarView.getCalendarSources().setAll(myCalendarSource);
+
             calendarContainer.getChildren().add(calendarView);
+
+            // If logged in as Employee, load tasks immediately
+            if (signInButton != null && App.getCurrentUser() != null) { // Employee Dashboard has signInButton
+                refreshCalendar(App.getCurrentUser().getUuid());
+            }
+
+            // If logged in as Employer, setup listener for selection
+            if (chooseEmployee != null) {
+                // If using JavaFX ComboBox or similar API
+                chooseEmployee.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+                    if (newVal != null && nameToUuidMap.containsKey(newVal)) {
+                        refreshCalendar(nameToUuidMap.get(newVal));
+                    }
+                });
+            }
         }
 
         // --- Initialize Employee List Table ---
@@ -881,8 +972,10 @@ public class Controller implements Initializable {
                 Account emp = findAccount(resourceListJSON[1], uuid);
                 if (emp != null) {
                     chooseEmployee.getItems().add(emp.getUsername());
+                    nameToUuidMap.put(emp.getUsername(), uuid);
                 } else {
                     chooseEmployee.getItems().add(uuid);
+                    nameToUuidMap.put(uuid, uuid);
                 }
             }
         } catch (IOException e) {

@@ -326,6 +326,22 @@ public class AccountManager {
         return filteredTasks;
     }
 
+    // NEW METHOD: Get tasks specific to an employee
+    public static List<Map<String, String>> getTasksForEmployee(String employeeUuid) throws IOException {
+        File file = getFile("tasks.json");
+        if (!file.exists() || file.length() == 0) return new ArrayList<>();
+
+        List<Map<String, String>> allTasks = objectMapper.readValue(file, new TypeReference<>() {});
+        List<Map<String, String>> employeeTasks = new ArrayList<>();
+
+        for (Map<String, String> task : allTasks) {
+            if (employeeUuid.equals(task.get("employeeUuid"))) {
+                employeeTasks.add(task);
+            }
+        }
+        return employeeTasks;
+    }
+
     /**
      * Removes tasks from tasks.json AND clears the task status in employee.json
      */

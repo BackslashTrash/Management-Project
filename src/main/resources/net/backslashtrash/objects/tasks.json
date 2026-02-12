@@ -1,1 +1,21 @@
-[ ]
+[ {
+  "rawStart" : "12:00",
+  "employeeUuid" : "b59c67bf-196a-3758-991e-42f76670ceba",
+  "rawEnd" : "17:00",
+  "employer" : "222",
+  "description" : "1212",
+  "id" : "e8d5a215-896b-4adf-955e-3e7c612dc577",
+  "time" : "2026-02-12 12:00 - 17:00",
+  "title" : "1212",
+  "rawDate" : "2026-02-12"
+}, {
+  "rawStart" : "12:00",
+  "employeeUuid" : "81dc9bdb-52d0-3dc2-8036-dbd8313ed055",
+  "rawEnd" : "17:00",
+  "employer" : "222",
+  "description" : "1212",
+  "id" : "0322a24b-d641-425a-bf1e-ad5c113d44c3",
+  "time" : "2026-02-12 12:00 - 17:00",
+  "title" : "1212",
+  "rawDate" : "2026-02-12"
+} ]
