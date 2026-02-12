@@ -3,41 +3,117 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
+<?import javafx.scene.text.Text?>
 
-<VBox fx:id="rootVBox" alignment="CENTER" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/22" xmlns:fx="http://javafx.com/fxml/1" fx:controller="net.backslashtrash.project1.Controller">
-   <children>
-      <HBox VBox.vgrow="ALWAYS" />
-      <HBox alignment="CENTER" spacing="20.0" VBox.vgrow="ALWAYS">
-         <children>
-            <VBox alignment="TOP_CENTER" prefHeight="200.0" prefWidth="100.0" spacing="1.0">
-               <padding>
-                  <Insets top="10.0" />
-               </padding>
-               <children>
-                  <StackPane prefHeight="150.0" prefWidth="200.0">
+<VBox fx:id="rootVBox" prefHeight="600.0" prefWidth="900.0" style="-fx-background-color: white;" xmlns="http://javafx.com/javafx/22" xmlns:fx="http://javafx.com/fxml/1" fx:controller="net.backslashtrash.project1.Controller">
+    <children>
+        <HBox VBox.vgrow="ALWAYS">
+            <children>
+                <!-- Sidebar Area -->
+                <VBox maxWidth="280.0" minWidth="240.0" prefWidth="260.0" spacing="15.0" style="-fx-background-color: #F8F9FA; -fx-border-color: #E0E0E0; -fx-border-width: 0 1 0 0;">
+                    <padding>
+                        <Insets bottom="20.0" left="20.0" right="20.0" top="30.0" />
+                    </padding>
+                    <children>
+                        <!-- Sidebar Header -->
+                        <Text fill="#6c757d" strokeType="OUTSIDE" strokeWidth="0.0" text="ACTIONS">
+                            <font>
+                                <Font name="System Bold" size="11.0" />
+                            </font>
+                        </Text>
+                  <StackPane>
                      <children>
-                        <Button fx:id="signInButton" mnemonicParsing="false" onAction="#onSignInDaily" text="Sign in today" />
-                        <Label fx:id="signInText">
-                           <font>
-                              <Font name="Yu Gothic UI Semibold" size="12.0" />
-                           </font>
-                        </Label>
+      
+                              <!-- Sign In Button (Replaces Add Employee) -->
+                              <Button fx:id="signInButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onSignInDaily" style="-fx-background-color: #2EC27E; -fx-text-fill: white; -fx-background-radius: 4; -fx-cursor: hand;" text="Sign In Today">
+                                  <padding>
+                                      <Insets bottom="8.0" left="15.0" right="15.0" top="8.0" />
+                                  </padding>
+                                  <font>
+                                      <Font name="System Bold" size="13.0" />
+                                  </font>
+                              </Button>
+      
+                              <!-- Feedback Label for Sign In -->
+                              <Label fx:id="signInText" textFill="#28a745" wrapText="true">
+                                  <font>
+                                      <Font name="System Bold" size="12.0" />
+                                  </font>
+                              </Label>
                      </children>
                   </StackPane>
-               </children>
-            </VBox>
-            <VBox prefHeight="200.0" prefWidth="100.0" spacing="4.0">
-               <padding>
-                  <Insets top="5.0" />
-               </padding>
-            </VBox>
-            <VBox prefHeight="200.0" prefWidth="100.0" />
-         </children>
-      </HBox>
-      <HBox VBox.vgrow="ALWAYS" />
-   </children>
+
+                        <Separator>
+                            <VBox.margin>
+                                <Insets bottom="5.0" top="5.0" />
+                            </VBox.margin>
+                        </Separator>
+
+                        <!-- Navigation Section -->
+                        <Text fill="#6c757d" strokeType="OUTSIDE" strokeWidth="0.0" text="NAVIGATION">
+                            <font>
+                                <Font name="System Bold" size="11.0" />
+                            </font>
+                        </Text>
+
+                        <VBox spacing="5.0">
+                            <children>
+                                <!-- Task List Button (Placeholder for future functionality) -->
+                                <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #495057; -fx-cursor: hand;" text="My Task List">
+                                    <padding>
+                                        <Insets bottom="8.0" left="15.0" right="15.0" top="8.0" />
+                                    </padding>
+                                    <font>
+                                        <Font name="System Bold" size="13.0" />
+                                    </font>
+                                </Button>
+                            </children>
+                        </VBox>
+
+                        <!-- Spacer to push Logout to bottom -->
+                        <Region VBox.vgrow="ALWAYS" />
+
+                        <!-- Logout Button -->
+                        <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onLogout" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #495057; -fx-cursor: hand;" text="Log out">
+                            <padding>
+                                <Insets bottom="8.0" top="8.0" />
+                            </padding>
+                        </Button>
+                    </children>
+                </VBox>
+
+                <!-- Main Content Area (Right Side) -->
+                <VBox style="-fx-background-color: white;" HBox.hgrow="ALWAYS">
+                    <padding>
+                        <Insets bottom="20.0" left="30.0" right="30.0" top="30.0" />
+                    </padding>
+                    <children>
+                        <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Employee Dashboard">
+                            <font>
+                                <Font name="System Bold" size="24.0" />
+                            </font>
+                        </Text>
+                        <Label text="Welcome back! Here is your schedule overview." textFill="#868e96">
+                            <VBox.margin>
+                                <Insets top="5.0" />
+                            </VBox.margin>
+                        </Label>
+
+                        <!-- Calendar Container (Controller will inject CalendarFX here) -->
+                        <StackPane fx:id="calendarContainer" style="-fx-border-color: #E0E0E0; -fx-border-radius: 4; -fx-background-radius: 4;" VBox.vgrow="ALWAYS">
+                            <VBox.margin>
+                                <Insets top="15.0" />
+                            </VBox.margin>
+                        </StackPane>
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+    </children>
 </VBox>

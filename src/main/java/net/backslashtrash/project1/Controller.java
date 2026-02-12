@@ -1201,7 +1201,7 @@ public class Controller implements Initializable {
             if (employer == null) employer = "Unknown";
             AccountManager.markAttendance(account.getUuid(), employer);
 
-            signInText.setText("You have signed \n in today");
+            signInText.setText("You have signed in today");
             signInButton.setVisible(false);
 
         } catch (IOException e) {
