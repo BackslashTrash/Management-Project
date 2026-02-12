@@ -14,6 +14,7 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList; // Added
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -64,6 +65,12 @@ public class Controller implements Initializable {
     // --- Navigation History ---
     private static final Stack<Integer> history = new Stack<>();
     private static int currentViewIndex = 0;
+
+    // --- Table Data Models ---
+    // Master list containing all loaded employees
+    private final ObservableList<EmployeeTableItem> masterData = FXCollections.observableArrayList();
+    // Filtered list wrapper that the table actually displays
+    private final FilteredList<EmployeeTableItem> filteredData = new FilteredList<>(masterData, p -> true);
 
     @FXML
     public ChoiceBox<String> accountTypeSelect = new ChoiceBox<>();
@@ -464,7 +471,7 @@ public class Controller implements Initializable {
         try {
             for (EmployeeTableItem item : toRemove) {
                 AccountManager.removeEmployeeFromEmployer(employer, item.getUuid());
-                allItems.remove(item);
+                masterData.remove(item); // Remove from masterData, FilteredList updates auto
             }
             updateSelectAllState();
 
@@ -564,6 +571,8 @@ public class Controller implements Initializable {
 
         // --- Initialize Employee List Table with Select All ---
         if (employeeTable != null) {
+
+            // Create the Header Checkbox
             selectAllCheckBox = new CheckBox();
             selectAllCheckBox.setCursor(Cursor.HAND);
             selectAllCheckBox.setOnAction(e -> {
@@ -581,6 +590,24 @@ public class Controller implements Initializable {
             colJob.setCellValueFactory(new PropertyValueFactory<>("jobBox"));
             colStatus.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getStatus()));
             colTask.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTask()));
+
+            // Bind table to FilteredList
+            employeeTable.setItems(filteredData);
+
+            // Add Listener to Filter Dropdown
+            if (filterJobSelect != null) {
+                filterJobSelect.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+                    filteredData.setPredicate(employee -> {
+                        // If no filter or "All Jobs", show everything
+                        if (newValue == null || "All Jobs".equals(newValue)) {
+                            return true;
+                        }
+                        // Compare dropdown value with employee's job
+                        String empJob = employee.getJobBox().getValue();
+                        return newValue.equals(empJob);
+                    });
+                });
+            }
 
             loadEmployeeListData();
         }
@@ -698,7 +725,7 @@ public class Controller implements Initializable {
     private void loadEmployeeListData() {
         if (App.getCurrentUser() == null) return;
 
-        ObservableList<EmployeeTableItem> tableData = FXCollections.observableArrayList();
+        masterData.clear();
 
         try {
             // Fetch available jobs for the dropdown
@@ -706,6 +733,21 @@ public class Controller implements Initializable {
                     .stream().map(j -> j.get("title"))
                     .collect(Collectors.toList());
             availableJobs.add(0, "Unassigned"); // Default option
+
+            // Update Filter Dropdown items (preserve selection if possible)
+            if (filterJobSelect != null) {
+                String currentFilter = filterJobSelect.getValue();
+                filterJobSelect.getItems().clear();
+                filterJobSelect.getItems().add("All Jobs");
+                filterJobSelect.getItems().addAll(availableJobs);
+                filterJobSelect.getItems().remove("Unassigned"); // Typically don't filter by 'Unassigned' via dynamic list, but ok to leave or add explicitly
+
+                if (currentFilter != null && filterJobSelect.getItems().contains(currentFilter)) {
+                    filterJobSelect.setValue(currentFilter);
+                } else {
+                    filterJobSelect.setValue("All Jobs");
+                }
+            }
 
             ArrayList<String> employeeIds = AccountManager.getEmployerEmployeeList(App.getCurrentUser().getUsername());
 
@@ -724,10 +766,9 @@ public class Controller implements Initializable {
                     updateSelectAllState();
                 });
 
-                tableData.add(item);
+                masterData.add(item);
             }
-
-            employeeTable.setItems(tableData);
+            // No need to employeeTable.setItems() here, it's bound to filteredData which wraps masterData
 
         } catch (IOException e) {
             e.printStackTrace();

@@ -1,7 +1,9 @@
 [ {
   "username" : "1111",
   "password" : "1111",
-  "uuid" : "b59c67bf-196a-3758-991e-42f76670ceba"
+  "uuid" : "b59c67bf-196a-3758-991e-42f76670ceba",
+  "job" : "Unassigned",
+  "task" : "None"
 }, {
   "username" : "1212",
   "password" : "1212",
