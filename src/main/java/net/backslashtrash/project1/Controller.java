@@ -643,7 +643,7 @@ public class Controller implements Initializable {
             AccountManager.removeJobs(idsToRemove);
             masterJobData.removeAll(toRemove);
             updateSelectAllJobsState();
-            AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Remove", "Deleted " + toRemove.size() + " jobs.");
+            AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Remove", "Deleted " + toRemove.size() + " job(s).");
         } catch (IOException e) {
             e.printStackTrace();
         }
