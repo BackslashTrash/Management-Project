@@ -14,7 +14,7 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.collections.transformation.FilteredList; // Added
+import javafx.collections.transformation.FilteredList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -39,7 +39,6 @@ import javafx.scene.shape.SVGPath;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import javafx.util.Pair;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,12 +47,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.function.Consumer;
-import java.util.Map;
-import java.util.List;
 import java.util.Stack;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class Controller implements Initializable {
@@ -67,13 +67,10 @@ public class Controller implements Initializable {
     private static int currentViewIndex = 0;
 
     // --- Table Data Models ---
-    // Master list containing all loaded employees
     private final ObservableList<EmployeeTableItem> masterData = FXCollections.observableArrayList();
-    // Filtered list wrapper that the table actually displays
     private final FilteredList<EmployeeTableItem> filteredData = new FilteredList<>(masterData, p -> true);
 
-    @FXML
-    public ChoiceBox<String> accountTypeSelect = new ChoiceBox<>();
+    @FXML public ChoiceBox<String> accountTypeSelect = new ChoiceBox<>();
     public TextField enterUser;
     public PasswordField enterPass;
     public PasswordField confirmPass;
@@ -103,7 +100,7 @@ public class Controller implements Initializable {
     @FXML public TableColumn<TaskTableItem, CheckBox> colTaskSelect;
     @FXML public TableColumn<TaskTableItem, String> colTaskDesc;
     @FXML public TableColumn<TaskTableItem, String> colTaskTime;
-    @FXML public TableColumn<TaskTableItem, String> colTaskAssignee;
+    @FXML public TableColumn<TaskTableItem, HBox> colTaskAssignee; // Updated to HBox to hold Button
 
     // --- Job List Screen Fields ---
     @FXML public TableView<JobTableItem> jobTable;
@@ -120,7 +117,6 @@ public class Controller implements Initializable {
     private Stage stage;
     private Parent lastRoot;
 
-    // Added jobList.fxml at index 7
     private final String[] resourceListFXML = {
             "titleScreen.fxml", "register.fxml", "login.fxml", "employee.fxml", "employer.fxml", "employeeList.fxml", "taskList.fxml", "jobList.fxml"
     };
@@ -137,7 +133,6 @@ public class Controller implements Initializable {
                     "M228.657,290.4c0,1.844,1.068,3.524,2.75,4.3c1.664,0.775,3.638,0.514,5.042-0.685l78.044-66.035 l-78.044-66.034c-1.404-1.2-3.378-1.46-5.042-0.686c-1.681,0.775-2.75,2.456-2.75,4.3v33.392H37.79v58.064h190.868V290.4z";
 
     // --- NAVIGATION LOGIC ---
-
     private void navigate(ActionEvent event, int targetIndex) throws IOException {
         if (targetIndex == currentViewIndex) return;
         history.push(currentViewIndex);
@@ -272,7 +267,6 @@ public class Controller implements Initializable {
 
         dialog.getDialogPane().setContent(grid);
 
-        // Validation
         final Button saveButton = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
         saveButton.addEventFilter(ActionEvent.ACTION, ae -> {
             String title = titleField.getText().trim();
@@ -283,17 +277,14 @@ public class Controller implements Initializable {
                 AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Input", "All fields are required.");
                 ae.consume(); return;
             }
-
             if (title.length() > 50) {
                 AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Input", "Title must be under 50 characters.");
                 ae.consume(); return;
             }
-
             if (desc.length() > 200) {
                 AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Input", "Description must be under 200 characters.");
                 ae.consume(); return;
             }
-
             try {
                 double pay = Double.parseDouble(payStr);
                 if (pay <= 0) {
@@ -314,11 +305,9 @@ public class Controller implements Initializable {
         });
 
         Optional<JobData> result = dialog.showAndWait();
-
         result.ifPresent(data -> {
             try {
                 AccountManager.addJob(App.getCurrentUser().getUsername(), data.title, data.desc, data.pay);
-                // Refresh employee list so the new job appears in dropdowns immediately
                 loadEmployeeListData();
                 AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Job created successfully!");
             } catch (IOException e) {
@@ -332,7 +321,7 @@ public class Controller implements Initializable {
         JobData(String t, String d, double p) { title = t; desc = d; pay = p; }
     }
 
-    // --- ADD TASK DIALOG (Robust Date/Time) ---
+    // --- ADD TASK DIALOG ---
     @FXML
     public void onAddTask(ActionEvent event) {
         if (employeeTable == null) return;
@@ -377,11 +366,10 @@ public class Controller implements Initializable {
 
         grid.add(new Label("Description:"), 0, 0);
         grid.add(taskDesc, 1, 0, 3, 1);
-
         grid.add(new Label("Date:"), 0, 1);
         grid.add(datePicker, 1, 1, 3, 1);
-
         grid.add(new Label("Start Time:"), 0, 2);
+
         HBox startBox = new HBox(5, startHour, new Label(":"), startMin);
         startBox.setAlignment(Pos.CENTER_LEFT);
         grid.add(startBox, 1, 2, 3, 1);
@@ -397,20 +385,16 @@ public class Controller implements Initializable {
         assignButton.addEventFilter(ActionEvent.ACTION, ae -> {
             String desc = taskDesc.getText();
             LocalDate date = datePicker.getValue();
-
             if (desc.isEmpty() || date == null) {
                 AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Input", "Please enter description and date.");
                 ae.consume(); return;
             }
-
             LocalTime start = LocalTime.of(startHour.getValue(), startMin.getValue());
             LocalTime end = LocalTime.of(endHour.getValue(), endMin.getValue());
-
             if (LocalDateTime.of(date, start).isBefore(LocalDateTime.now())) {
                 AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Time", "Task start time cannot be in the past.");
                 ae.consume(); return;
             }
-
             if (!end.isAfter(start)) {
                 AccountManager.alertCreator(Alert.AlertType.WARNING, "Invalid Time", "End time must be after start time.");
                 ae.consume();
@@ -430,7 +414,6 @@ public class Controller implements Initializable {
         });
 
         Optional<TaskData> result = dialog.showAndWait();
-
         result.ifPresent(data -> {
             try {
                 AccountManager.assignTask(selectedUuids, data.desc, data.date, data.start, data.end, App.getCurrentUser().getUsername());
@@ -447,6 +430,115 @@ public class Controller implements Initializable {
         TaskData(String d, LocalDate dt, LocalTime s, LocalTime e) {
             desc = d; date = dt; start = s; end = e;
         }
+    }
+
+    // --- DIALOG FOR ADDING MORE PEOPLE TO AN EXISTING TASK ---
+    public void openAddAssigneeDialog(TaskTableItem taskItem, List<String> currentAssigneeUuids, Map<String, String> rawTaskData) {
+        Dialog<List<String>> dialog = new Dialog<>();
+        dialog.setTitle("Add Assignees");
+        dialog.setHeaderText("Add more employees to task: \n" + taskItem.getDescription());
+
+        ButtonType assignButtonType = new ButtonType("Add Selected", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(assignButtonType, ButtonType.CANCEL);
+
+        VBox vbox = new VBox(10);
+        vbox.setPadding(new Insets(10, 20, 10, 10));
+
+        CheckBox selectAll = new CheckBox("Select All New Employees");
+        selectAll.setStyle("-fx-font-weight: bold;");
+        vbox.getChildren().add(selectAll);
+        vbox.getChildren().add(new Separator());
+
+        List<CheckBox> employeeChecks = new ArrayList<>();
+
+        try {
+            ArrayList<String> allEmployees = AccountManager.getEmployerEmployeeList(App.getCurrentUser().getUsername());
+            for (String uuid : allEmployees) {
+                Account empAccount = findAccount(resourceListJSON[1], uuid);
+                String name = (empAccount != null) ? empAccount.getUsername() : "Unknown (" + uuid + ")";
+
+                CheckBox cb = new CheckBox(name);
+                cb.setUserData(uuid);
+
+                // If the employee is already assigned, disable and check the box visually
+                if (currentAssigneeUuids.contains(uuid)) {
+                    cb.setSelected(true);
+                    cb.setDisable(true);
+                    cb.setText(name + " (Already Assigned)");
+                    cb.setStyle("-fx-text-fill: gray;");
+                } else {
+                    employeeChecks.add(cb);
+                }
+                vbox.getChildren().add(cb);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        selectAll.setOnAction(e -> {
+            boolean selected = selectAll.isSelected();
+            for (CheckBox cb : employeeChecks) {
+                if (!cb.isDisabled()) {
+                    cb.setSelected(selected);
+                }
+            }
+        });
+
+        ScrollPane scroll = new ScrollPane(vbox);
+        scroll.setFitToWidth(true);
+        scroll.setPrefHeight(250);
+        scroll.setStyle("-fx-background-color: transparent;");
+        dialog.getDialogPane().setContent(scroll);
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == assignButtonType) {
+                List<String> newSelectedUuids = new ArrayList<>();
+                for (CheckBox cb : employeeChecks) {
+                    if (cb.isSelected() && !cb.isDisabled()) {
+                        newSelectedUuids.add((String) cb.getUserData());
+                    }
+                }
+                return newSelectedUuids;
+            }
+            return null;
+        });
+
+        Optional<List<String>> result = dialog.showAndWait();
+        result.ifPresent(newUuids -> {
+            if (!newUuids.isEmpty()) {
+                // Determine Original Task Details (Fallback to current time if parsing fails)
+                LocalDate date = LocalDate.now();
+                LocalTime start = LocalTime.of(9, 0);
+                LocalTime end = LocalTime.of(17, 0);
+
+                try {
+                    if (rawTaskData.containsKey("date")) {
+                        date = LocalDate.parse(rawTaskData.get("date"));
+                    }
+                    if (rawTaskData.containsKey("start")) {
+                        start = LocalTime.parse(rawTaskData.get("start"));
+                    } else if (rawTaskData.containsKey("startTime")) {
+                        start = LocalTime.parse(rawTaskData.get("startTime"));
+                    }
+                    if (rawTaskData.containsKey("end")) {
+                        end = LocalTime.parse(rawTaskData.get("end"));
+                    } else if (rawTaskData.containsKey("endTime")) {
+                        end = LocalTime.parse(rawTaskData.get("endTime"));
+                    }
+                } catch (Exception e) {
+                    System.out.println("Could not parse exact date/time from task data. Using defaults.");
+                }
+
+                try {
+                    AccountManager.assignTask(newUuids, taskItem.getDescription(), date, start, end, App.getCurrentUser().getUsername());
+                    loadTaskListData(); // Refresh UI to show the grouped task
+                    AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Added " + newUuids.size() + " new employee(s) to the task!");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    AccountManager.alertCreator(Alert.AlertType.ERROR, "Error", "Failed to assign task.");
+                }
+            }
+        });
     }
 
     @FXML
@@ -471,10 +563,9 @@ public class Controller implements Initializable {
         try {
             for (EmployeeTableItem item : toRemove) {
                 AccountManager.removeEmployeeFromEmployer(employer, item.getUuid());
-                masterData.remove(item); // Remove from masterData, FilteredList updates auto
+                masterData.remove(item);
             }
             updateSelectAllState();
-
             AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Remove", "Removed " + toRemove.size() + " employees.");
         } catch (IOException e) {
             e.printStackTrace();
@@ -493,7 +584,8 @@ public class Controller implements Initializable {
         for (TaskTableItem item : allItems) {
             if (item.getSelectBox().isSelected()) {
                 toRemove.add(item);
-                idsToRemove.add(item.getId());
+                // Remove all grouped task assignments associated with this row
+                idsToRemove.addAll(item.getIds());
             }
         }
 
@@ -506,7 +598,7 @@ public class Controller implements Initializable {
             AccountManager.removeTasks(idsToRemove);
             allItems.removeAll(toRemove);
             updateSelectAllTasksState();
-            AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Remove", "Deleted " + toRemove.size() + " tasks.");
+            AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Remove", "Deleted selected tasks.");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -569,10 +661,8 @@ public class Controller implements Initializable {
             loadEmployerEmployees();
         }
 
-        // --- Initialize Employee List Table with Select All ---
+        // --- Initialize Employee List Table ---
         if (employeeTable != null) {
-
-            // Create the Header Checkbox
             selectAllCheckBox = new CheckBox();
             selectAllCheckBox.setCursor(Cursor.HAND);
             selectAllCheckBox.setOnAction(e -> {
@@ -581,7 +671,6 @@ public class Controller implements Initializable {
                     item.getSelectBox().setSelected(isSelected);
                 }
             });
-
             colSelect.setGraphic(selectAllCheckBox);
             colSelect.setText("");
 
@@ -591,24 +680,19 @@ public class Controller implements Initializable {
             colStatus.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getStatus()));
             colTask.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTask()));
 
-            // Bind table to FilteredList
             employeeTable.setItems(filteredData);
 
-            // Add Listener to Filter Dropdown
             if (filterJobSelect != null) {
                 filterJobSelect.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
                     filteredData.setPredicate(employee -> {
-                        // If no filter or "All Jobs", show everything
                         if (newValue == null || "All Jobs".equals(newValue)) {
                             return true;
                         }
-                        // Compare dropdown value with employee's job
                         String empJob = employee.getJobBox().getValue();
                         return newValue.equals(empJob);
                     });
                 });
             }
-
             loadEmployeeListData();
         }
 
@@ -629,7 +713,9 @@ public class Controller implements Initializable {
             colTaskSelect.setCellValueFactory(new PropertyValueFactory<>("selectBox"));
             colTaskDesc.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getDescription()));
             colTaskTime.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTime()));
-            colTaskAssignee.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getAssignee()));
+
+            // Map the assignee column to the dynamically created HBox
+            colTaskAssignee.setCellValueFactory(new PropertyValueFactory<>("assigneeBox"));
 
             loadTaskListData();
         }
@@ -724,23 +810,20 @@ public class Controller implements Initializable {
 
     private void loadEmployeeListData() {
         if (App.getCurrentUser() == null) return;
-
         masterData.clear();
 
         try {
-            // Fetch available jobs for the dropdown
             List<String> availableJobs = AccountManager.getEmployerJobs(App.getCurrentUser().getUsername())
                     .stream().map(j -> j.get("title"))
                     .collect(Collectors.toList());
-            availableJobs.add(0, "Unassigned"); // Default option
+            availableJobs.add(0, "Unassigned");
 
-            // Update Filter Dropdown items (preserve selection if possible)
             if (filterJobSelect != null) {
                 String currentFilter = filterJobSelect.getValue();
                 filterJobSelect.getItems().clear();
                 filterJobSelect.getItems().add("All Jobs");
                 filterJobSelect.getItems().addAll(availableJobs);
-                filterJobSelect.getItems().remove("Unassigned"); // Typically don't filter by 'Unassigned' via dynamic list, but ok to leave or add explicitly
+                filterJobSelect.getItems().remove("Unassigned");
 
                 if (currentFilter != null && filterJobSelect.getItems().contains(currentFilter)) {
                     filterJobSelect.setValue(currentFilter);
@@ -750,26 +833,19 @@ public class Controller implements Initializable {
             }
 
             ArrayList<String> employeeIds = AccountManager.getEmployerEmployeeList(App.getCurrentUser().getUsername());
-
             for (String uuid : employeeIds) {
                 Account empAccount = findAccount(resourceListJSON[1], uuid);
                 String name = (empAccount != null) ? empAccount.getUsername() : "Unknown (" + uuid + ")";
 
                 boolean isSigned = AccountManager.isSignedToday(uuid);
                 String status = isSigned ? "Signed In" : "Absent";
-
                 String job = AccountManager.getEmployeeJob(uuid);
                 String task = AccountManager.getEmployeeTask(uuid);
 
                 EmployeeTableItem item = new EmployeeTableItem(uuid, name, job, status, task, availableJobs);
-                item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> {
-                    updateSelectAllState();
-                });
-
+                item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllState());
                 masterData.add(item);
             }
-            // No need to employeeTable.setItems() here, it's bound to filteredData which wraps masterData
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -782,16 +858,39 @@ public class Controller implements Initializable {
         try {
             List<Map<String, String>> tasks = AccountManager.getAllTasks(App.getCurrentUser().getUsername());
 
+            // 1. Group Tasks by exactly matching description and time.
+            Map<String, List<Map<String, String>>> groupedTasks = new HashMap<>();
             for (Map<String, String> t : tasks) {
-                Account emp = findAccount(resourceListJSON[1], t.get("employeeUuid"));
-                String assignee = (emp != null) ? emp.getUsername() : "Unknown";
+                String key = t.get("description") + "|||" + t.get("time");
+                groupedTasks.computeIfAbsent(key, k -> new ArrayList<>()).add(t);
+            }
 
-                TaskTableItem item = new TaskTableItem(
-                        t.get("id"),
-                        t.get("description"),
-                        t.get("time"),
-                        assignee
-                );
+            // 2. Process each group into one unified Table Item
+            for (Map.Entry<String, List<Map<String, String>>> entry : groupedTasks.entrySet()) {
+                List<Map<String, String>> group = entry.getValue();
+
+                List<String> ids = new ArrayList<>();
+                List<String> assigneeUuids = new ArrayList<>();
+                List<String> assigneeNames = new ArrayList<>();
+
+                for (Map<String, String> t : group) {
+                    ids.add(t.get("id"));
+
+                    String empUuid = t.get("employeeUuid");
+                    assigneeUuids.add(empUuid);
+
+                    Account emp = findAccount(resourceListJSON[1], empUuid);
+                    assigneeNames.add((emp != null) ? emp.getUsername() : "Unknown");
+                }
+
+                Map<String, String> rawData = group.get(0);
+                String desc = rawData.get("description");
+                String time = rawData.get("time");
+                String namesStr = String.join(", ", assigneeNames);
+
+                // Pass the controller instance so the button inside TaskTableItem can trigger the dialog
+                TaskTableItem item = new TaskTableItem(ids, desc, time, namesStr, assigneeUuids, rawData, this);
+
                 item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllTasksState());
                 tableData.add(item);
             }
@@ -811,10 +910,7 @@ public class Controller implements Initializable {
 
             for (Map<String, String> j : jobs) {
                 JobTableItem item = new JobTableItem(
-                        j.get("id"),
-                        j.get("title"),
-                        j.get("pay"),
-                        j.get("description")
+                        j.get("id"), j.get("title"), j.get("pay"), j.get("description")
                 );
                 item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllJobsState());
                 tableData.add(item);
@@ -836,7 +932,6 @@ public class Controller implements Initializable {
         private final CheckBox selectBox;
         private final ComboBox<String> jobBox;
 
-        // Updated constructor to accept dynamic job list
         public EmployeeTableItem(String uuid, String name, String currentJob, String status, String task, List<String> availableJobs) {
             this.uuid = uuid;
             this.name = name;
@@ -870,26 +965,47 @@ public class Controller implements Initializable {
     }
 
     public static class TaskTableItem {
-        private final String id;
+        private final List<String> ids; // Changed from single ID to a list of IDs to support grouped deletion
         private final String description;
         private final String time;
-        private final String assignee;
         private final CheckBox selectBox;
 
-        public TaskTableItem(String id, String description, String time, String assignee) {
-            this.id = id;
+        private final HBox assigneeBox;
+
+        public TaskTableItem(List<String> ids, String description, String time, String assigneesText,
+                             List<String> currentAssigneeUuids, Map<String, String> rawTaskData, Controller controller) {
+            this.ids = ids;
             this.description = description;
             this.time = time;
-            this.assignee = assignee;
             this.selectBox = new CheckBox();
             this.selectBox.setAlignment(Pos.CENTER);
             this.selectBox.setCursor(Cursor.HAND);
+
+            // Build Assignee Layout Component
+            Label label = new Label(assigneesText);
+            label.setWrapText(true);
+
+            // Create a spacer to push the button to the right
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            Button addButton = new Button("+");
+            addButton.setStyle("-fx-background-color: #4A93FF; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 50%; -fx-min-width: 26px; -fx-min-height: 26px; -fx-padding: 0;");
+            addButton.setCursor(Cursor.HAND);
+            addButton.setTooltip(new Tooltip("Add more employees to this task"));
+
+            // Call the Dialog when clicked
+            addButton.setOnAction(e -> controller.openAddAssigneeDialog(this, currentAssigneeUuids, rawTaskData));
+
+            this.assigneeBox = new HBox(10, label, spacer, addButton);
+            this.assigneeBox.setAlignment(Pos.CENTER_LEFT);
         }
-        public String getId() { return id; }
+
+        public List<String> getIds() { return ids; } // Return all grouped IDs for deletion
         public String getDescription() { return description; }
         public String getTime() { return time; }
-        public String getAssignee() { return assignee; }
         public CheckBox getSelectBox() { return selectBox; }
+        public HBox getAssigneeBox() { return assigneeBox; } // Required for PropertyValueFactory
     }
 
     public static class JobTableItem {
@@ -955,7 +1071,6 @@ public class Controller implements Initializable {
         if (!file.exists()) {
             file = new File("src/main/resources/net/backslashtrash/objects/",filename + ".json");
         }
-
         ArrayList<Account> accountArrayList = objectMapper.readValue(file, new TypeReference<>() {});
         if (file.length() == 0) {
             return null;
@@ -973,7 +1088,6 @@ public class Controller implements Initializable {
         if (!file.exists()) {
             file = new File("src/main/resources/net/backslashtrash/objects/",filename + ".json");
         }
-
         ArrayList<Account> accountArrayList = objectMapper.readValue(file, new TypeReference<>() {});
         if (file.length() == 0) {
             return null;
@@ -1007,12 +1121,7 @@ public class Controller implements Initializable {
 
     private void loginAccount(Account account,ActionEvent event, int index) throws IOException {
         App.lock(account);
-        navigate(event, index); // Use navigate instead of switchScene
-    }
-
-    private boolean isSignIn(Account account) {
-        Account current =  App.getCurrentUser();
-        return false;
+        navigate(event, index);
     }
 
     @FXML
@@ -1043,7 +1152,7 @@ public class Controller implements Initializable {
     }
 
     public void onLogout(ActionEvent event) throws IOException {
-        history.clear(); // Clear history on logout
+        history.clear();
         currentViewIndex = Files.TITLESCREEN.INDEX;
         switchScene(event,FXMLLoader.load(App.class.getResource(resourceListFXML[Files.TITLESCREEN.INDEX])));
         App.unlock();
@@ -1109,7 +1218,6 @@ public class Controller implements Initializable {
         button.setBackground(new Background(new BackgroundFill(normal, radii, Insets.EMPTY)));
         button.setBorder(Border.EMPTY);
         button.setEffect(shadow);
-
         button.setPickOnBounds(false);
 
         button.setMinHeight(prefHeight);
