@@ -40,6 +40,8 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import com.calendarfx.view.CalendarView;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -78,6 +80,7 @@ public class Controller implements Initializable {
     private final FilteredList<JobTableItem> filteredJobData = new FilteredList<>(masterJobData, p -> true);
 
     @FXML public ChoiceBox<String> accountTypeSelect = new ChoiceBox<>();
+    @FXML public StackPane calendarContainer;
     public TextField enterUser;
     public PasswordField enterPass;
     public PasswordField confirmPass;
@@ -671,6 +674,15 @@ public class Controller implements Initializable {
 
         if (chooseEmployee != null && App.getCurrentUser() != null) {
             loadEmployerEmployees();
+        }
+
+        if (calendarContainer != null) {
+            CalendarView calendarView = new CalendarView();
+            calendarView.setShowDeveloperConsole(false); // hides standard debug tools
+            calendarView.setShowAddCalendarButton(false);
+
+            calendarContainer.getChildren().add(calendarView);
+
         }
 
         // --- Initialize Employee List Table ---
