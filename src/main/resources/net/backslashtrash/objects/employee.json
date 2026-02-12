@@ -3,7 +3,7 @@
   "password" : "1111",
   "uuid" : "b59c67bf-196a-3758-991e-42f76670ceba",
   "job" : "Unassigned",
-  "task" : "1212: 1212 (12:00 - 17:00)"
+  "task" : "None"
 }, {
   "username" : "1212",
   "password" : "1212",
@@ -13,5 +13,6 @@
   "username" : "1234",
   "password" : "1234",
   "uuid" : "81dc9bdb-52d0-3dc2-8036-dbd8313ed055",
-  "task" : "1212: 1212 (12:00 - 17:00)"
+  "task" : "None",
+  "totalEarnings" : 0.0
 } ]

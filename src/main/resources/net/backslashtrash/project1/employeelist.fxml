@@ -20,7 +20,6 @@
         <!-- Header Section -->
         <HBox alignment="CENTER_LEFT" spacing="15.0">
             <children>
-                <!-- FIX: Changed action to #onBack -->
                 <Button mnemonicParsing="false" onAction="#onBack" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand;" text="← Back">
                     <font>
                         <Font size="13.0" />
@@ -100,10 +99,12 @@
         <TableView fx:id="employeeTable" VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 0);">
             <columns>
                 <TableColumn fx:id="colSelect" prefWidth="50.0" sortable="false" style="-fx-alignment: CENTER;" text="" />
-                <TableColumn fx:id="colName" prefWidth="200.0" text="Employee Name" />
-                <TableColumn fx:id="colJob" prefWidth="180.0" text="Job Position" />
+                <TableColumn fx:id="colName" prefWidth="150.0" text="Employee Name" />
+                <TableColumn fx:id="colJob" prefWidth="150.0" text="Job Position" />
                 <TableColumn fx:id="colStatus" prefWidth="100.0" text="Status" />
                 <TableColumn fx:id="colTask" prefWidth="250.0" text="Current Task" />
+                <!-- The Missing Column -->
+                <TableColumn fx:id="colEarnings" prefWidth="120.0" text="Total Earnings" />
             </columns>
             <columnResizePolicy>
                 <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />

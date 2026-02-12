@@ -51,6 +51,7 @@ import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -82,11 +83,17 @@ public class Controller implements Initializable {
     private final ObservableList<JobTableItem> masterJobData = FXCollections.observableArrayList();
     private final FilteredList<JobTableItem> filteredJobData = new FilteredList<>(masterJobData, p -> true);
 
+    // NEW: Employee Personal Task List
+    private final ObservableList<EmployeeTaskTableItem> employeeTaskData = FXCollections.observableArrayList();
+
     @FXML public ChoiceBox<String> accountTypeSelect = new ChoiceBox<>();
     @FXML public StackPane calendarContainer;
+    @FXML public Label earningsLabel;
 
     private final Calendar workCalendar = new Calendar("Work Tasks");
     private final Map<String, String> nameToUuidMap = new HashMap<>();
+
+    // Auth & Sidebar Fields
     public TextField enterUser;
     public PasswordField enterPass;
     public PasswordField confirmPass;
@@ -109,6 +116,7 @@ public class Controller implements Initializable {
     @FXML public TableColumn<EmployeeTableItem, ComboBox<String>> colJob;
     @FXML public TableColumn<EmployeeTableItem, String> colStatus;
     @FXML public TableColumn<EmployeeTableItem, String> colTask;
+    @FXML public TableColumn<EmployeeTableItem, String> colEarnings;
     @FXML public ComboBox<String> filterJobSelect;
     @FXML public TextField searchEmployeeField;
 
@@ -129,6 +137,13 @@ public class Controller implements Initializable {
     @FXML public TableColumn<JobTableItem, String> colJobDesc;
     @FXML public TextField searchJobField;
 
+    // --- Employee Personal Task List Fields ---
+    @FXML public TableView<EmployeeTaskTableItem> employeeTaskTable;
+    @FXML public TableColumn<EmployeeTaskTableItem, String> colEmpTaskTitle;
+    @FXML public TableColumn<EmployeeTaskTableItem, String> colEmpTaskDesc;
+    @FXML public TableColumn<EmployeeTaskTableItem, String> colEmpTaskTime;
+    @FXML public TableColumn<EmployeeTaskTableItem, Button> colEmpTaskAction;
+
     private CheckBox selectAllCheckBox;
     private CheckBox selectAllTasksCheckBox;
     private CheckBox selectAllJobsCheckBox;
@@ -137,8 +152,11 @@ public class Controller implements Initializable {
     private Stage stage;
     private Parent lastRoot;
 
+    // 0: Title, 1: Register, 2: Login, 3: Employee DB, 4: Employer DB,
+    // 5: Emp List, 6: Task List, 7: Job List, 8: Employee Task List
     private final String[] resourceListFXML = {
-            "titleScreen.fxml", "register.fxml", "login.fxml", "employee.fxml", "employer.fxml", "employeeList.fxml", "taskList.fxml", "jobList.fxml"
+            "titleScreen.fxml", "register.fxml", "login.fxml", "employee.fxml", "employer.fxml",
+            "employeeList.fxml", "taskList.fxml", "jobList.fxml", "employeeTaskList.fxml"
     };
     private final String[] resourceListJSON = {
             "attendance","employee","employer"
@@ -151,6 +169,8 @@ public class Controller implements Initializable {
     private static final String LOGIN =
             "M155.81,0v173.889h33.417V33.417h235.592l-74.87,50.656c-8.469,5.727-13.535,15.289-13.535,25.503v286.24 H189.227V282.079H155.81v147.154h180.604v70.93c0,4.382,2.423,8.404,6.29,10.451c3.867,2.056,8.558,1.811,12.189-0.644 l119.318-80.736V0H155.81z" +
                     "M228.657,290.4c0,1.844,1.068,3.524,2.75,4.3c1.664,0.775,3.638,0.514,5.042-0.685l78.044-66.035 l-78.044-66.034c-1.404-1.2-3.378-1.46-5.042-0.686c-1.681,0.775-2.75,2.456-2.75,4.3v33.392H37.79v58.064h190.868V290.4z";
+
+    @FXML public void onShowEmployeeTasks(ActionEvent event) throws IOException { navigate(event, 8); }
 
     // --- NAVIGATION LOGIC ---
     private void navigate(ActionEvent event, int targetIndex) throws IOException {
@@ -168,8 +188,16 @@ public class Controller implements Initializable {
             switchScene(event, FXMLLoader.load(App.class.getResource(resourceListFXML[previousIndex])));
         } else {
             if (App.getCurrentUser() != null) {
-                currentViewIndex = 4;
-                switchScene(event, FXMLLoader.load(App.class.getResource(resourceListFXML[4])));
+                if (currentViewIndex == 8 || currentViewIndex == 3) {
+                    currentViewIndex = 3;
+                    switchScene(event, FXMLLoader.load(App.class.getResource(resourceListFXML[3])));
+                } else if (currentViewIndex >= 4) {
+                    currentViewIndex = 4;
+                    switchScene(event, FXMLLoader.load(App.class.getResource(resourceListFXML[4])));
+                } else {
+                    currentViewIndex = 0;
+                    switchScene(event, FXMLLoader.load(App.class.getResource(resourceListFXML[0])));
+                }
             } else {
                 currentViewIndex = 0;
                 switchScene(event, FXMLLoader.load(App.class.getResource(resourceListFXML[0])));
@@ -187,61 +215,44 @@ public class Controller implements Initializable {
         navigate(event, Files.LOGIN.INDEX);
     }
 
-    // --- CALENDAR LOGIC (Updated with Fallback) ---
+    // --- CALENDAR LOGIC ---
     private void refreshCalendar(String uuid) {
         System.out.println("Refreshing calendar for UUID: " + uuid);
         workCalendar.clear();
         try {
             List<Map<String, String>> tasks = AccountManager.getTasksForEmployee(uuid);
-            System.out.println("Found " + tasks.size() + " tasks for employee.");
 
             for (Map<String, String> t : tasks) {
                 String title = t.getOrDefault("title", "Task");
-                // Safety check if title is null or empty
                 if (title == null || title.trim().isEmpty()) title = "Task";
-
-                String desc = t.getOrDefault("description", "");
 
                 LocalDate date = null;
                 LocalTime start = null;
                 LocalTime end = null;
 
-                // 1. Try parsing raw ISO fields (New Format)
                 if (t.containsKey("rawDate") && t.containsKey("rawStart") && t.containsKey("rawEnd")) {
                     try {
                         date = LocalDate.parse(t.get("rawDate"));
                         start = LocalTime.parse(t.get("rawStart"));
                         end = LocalTime.parse(t.get("rawEnd"));
-                    } catch (Exception e) {
-                        System.out.println("Error parsing raw fields: " + e.getMessage());
-                    }
+                    } catch (Exception e) { System.out.println("Error parsing raw fields: " + e.getMessage()); }
                 }
-                // 2. Fallback: Parse the display string "yyyy-MM-dd HH:mm - HH:mm" (Old Format)
                 else if (t.containsKey("time")) {
                     try {
-                        // Expected format in 'time': "2025-10-27 09:00 - 17:00"
-                        // Split by space
                         String timeStr = t.get("time");
                         String[] parts = timeStr.split(" ");
-                        // parts[0] = date, parts[1] = start, parts[2] = "-", parts[3] = end
                         if (parts.length >= 4) {
                             date = LocalDate.parse(parts[0]);
                             start = LocalTime.parse(parts[1]);
                             end = LocalTime.parse(parts[3]);
                         }
-                    } catch (Exception e) {
-                        System.out.println("Error parsing fallback time string: " + e.getMessage());
-                    }
+                    } catch (Exception e) { System.out.println("Error parsing fallback time string: " + e.getMessage()); }
                 }
 
                 if (date != null && start != null && end != null) {
                     Entry<String> entry = new Entry<>(title);
                     entry.setInterval(date, start, date, end);
-                    // entry.setLocation(desc);
                     workCalendar.addEntry(entry);
-                    System.out.println("Added entry: " + title + " at " + date + " " + start + "-" + end);
-                } else {
-                    System.out.println("Skipping task due to parsing failure: " + title);
                 }
             }
         } catch (Exception e) {
@@ -536,7 +547,7 @@ public class Controller implements Initializable {
     public void openAddAssigneeDialog(TaskTableItem taskItem, List<String> currentAssigneeUuids, Map<String, String> rawTaskData) {
         Dialog<List<String>> dialog = new Dialog<>();
         dialog.setTitle("Add Assignees");
-        dialog.setHeaderText("Add more employees to task: \n" + taskItem.getTitle()); // Changed to Title
+        dialog.setHeaderText("Add more employees to task: \n" + taskItem.getTitle());
 
         ButtonType assignButtonType = new ButtonType("Add Selected", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(assignButtonType, ButtonType.CANCEL);
@@ -633,7 +644,7 @@ public class Controller implements Initializable {
 
                 try {
                     AccountManager.assignTask(newUuids, taskItem.getTitle(), taskItem.getDescription(), date, start, end, App.getCurrentUser().getUsername());
-                    loadTaskListData(); // Refresh UI to show the grouped task
+                    loadTaskListData();
                     AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Added " + newUuids.size() + " new employee(s) to the task!");
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -686,7 +697,6 @@ public class Controller implements Initializable {
         for (TaskTableItem item : allItems) {
             if (item.getSelectBox().isSelected()) {
                 toRemove.add(item);
-                // Remove all grouped task assignments associated with this row
                 idsToRemove.addAll(item.getIds());
             }
         }
@@ -811,6 +821,7 @@ public class Controller implements Initializable {
             colJob.setCellValueFactory(new PropertyValueFactory<>("jobBox"));
             colStatus.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getStatus()));
             colTask.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTask()));
+            colEarnings.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getEarnings()));
 
             employeeTable.setItems(filteredData);
 
@@ -896,10 +907,21 @@ public class Controller implements Initializable {
             loadJobListData();
         }
 
+        // --- Initialize Employee Personal Task Table ---
+        if (employeeTaskTable != null) {
+            colEmpTaskTitle.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTitle()));
+            colEmpTaskDesc.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getDescription()));
+            colEmpTaskTime.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTime()));
+            colEmpTaskAction.setCellValueFactory(new PropertyValueFactory<>("actionButton"));
+            employeeTaskTable.setItems(employeeTaskData);
+            loadEmployeeTaskListData();
+        }
+
         if (signInButton != null && App.getCurrentUser() != null && signInText != null) {
             try {
                 if (AccountManager.isSignedToday(App.getCurrentUser().getUuid())) {
-                    signInText.setText("You have signed \n in today");
+                    signInText.setVisible(true);
+                    signInText.setText("You have signed in today");
                     signInButton.setVisible(false);
                 }
             } catch (IOException e) {
@@ -1016,8 +1038,10 @@ public class Controller implements Initializable {
                 String status = isSigned ? "Signed In" : "Absent";
                 String job = AccountManager.getEmployeeJob(uuid);
                 String task = AccountManager.getEmployeeTask(uuid);
+                double earn = AccountManager.getEarnings(uuid);
+                String earningsStr = String.format("$%.2f", earn);
 
-                EmployeeTableItem item = new EmployeeTableItem(uuid, name, job, status, task, availableJobs);
+                EmployeeTableItem item = new EmployeeTableItem(uuid, name, job, status, task, earningsStr, availableJobs);
                 item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllState());
                 masterData.add(item);
             }
@@ -1113,14 +1137,16 @@ public class Controller implements Initializable {
         private final String name;
         private final String status;
         private final String task;
+        private final String earnings;
         private final CheckBox selectBox;
         private final ComboBox<String> jobBox;
 
-        public EmployeeTableItem(String uuid, String name, String currentJob, String status, String task, List<String> availableJobs) {
+        public EmployeeTableItem(String uuid, String name, String currentJob, String status, String task, String earnings, List<String> availableJobs) {
             this.uuid = uuid;
             this.name = name;
             this.status = status;
             this.task = task;
+            this.earnings = earnings;
 
             this.selectBox = new CheckBox();
             this.selectBox.setAlignment(Pos.CENTER);
@@ -1144,8 +1170,118 @@ public class Controller implements Initializable {
         public String getName() { return name; }
         public String getStatus() { return status; }
         public String getTask() { return task; }
+        public String getEarnings() { return earnings; }
         public CheckBox getSelectBox() { return selectBox; }
         public ComboBox<String> getJobBox() { return jobBox; }
+    }
+
+    public static class EmployeeTaskTableItem {
+        private final String id, title, description, time;
+        private final Map<String, String> rawData;
+        private final Button actionButton;
+
+        public EmployeeTaskTableItem(String id, String title, String description, String time, Map<String, String> rawData, Controller controller) {
+            this.id = id; this.title = title; this.description = description; this.time = time; this.rawData = rawData;
+            this.actionButton = new Button("Complete");
+
+            // Check time constraint
+            boolean isLocked = false;
+            if (rawData.containsKey("rawDate") && rawData.containsKey("rawEnd")) {
+                try {
+                    LocalDate date = LocalDate.parse(rawData.get("rawDate"));
+                    LocalTime end = LocalTime.parse(rawData.get("rawEnd"));
+                    LocalDateTime taskEndTime = LocalDateTime.of(date, end);
+                    if (LocalDateTime.now().isBefore(taskEndTime)) {
+                        isLocked = true;
+                    }
+                } catch (Exception e) {}
+            }
+
+            if (isLocked) {
+                this.actionButton.setStyle("-fx-background-color: #6c757d; -fx-text-fill: white; -fx-font-weight: bold;");
+                this.actionButton.setTooltip(new Tooltip("Available after scheduled time"));
+            } else {
+                this.actionButton.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+            }
+
+            this.actionButton.setOnAction(e -> controller.onCompleteTask(this));
+        }
+        public String getId() { return id; } public String getTitle() { return title; } public String getDescription() { return description; }
+        public String getTime() { return time; } public Button getActionButton() { return actionButton; }
+        public Map<String, String> getRawData() { return rawData; }
+    }
+
+    public void onCompleteTask(EmployeeTaskTableItem item) {
+        // 1. Time Validation
+        Map<String, String> rawData = item.getRawData();
+        if (rawData.containsKey("rawDate") && rawData.containsKey("rawEnd")) {
+            try {
+                LocalDate date = LocalDate.parse(rawData.get("rawDate"));
+                LocalTime end = LocalTime.parse(rawData.get("rawEnd"));
+                LocalDateTime taskEndTime = LocalDateTime.of(date, end);
+
+                if (LocalDateTime.now().isBefore(taskEndTime)) {
+                    AccountManager.alertCreator(Alert.AlertType.WARNING, "Task In Progress",
+                            "You cannot complete this task yet.\nPlease wait until the scheduled end time: " + end);
+                    return;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // 2. Confirmation & Completion
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Complete Task");
+        alert.setHeaderText("Mark task as complete?");
+        alert.setContentText("This will remove the task and calculate payment.");
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                String uuid = App.getCurrentUser().getUuid();
+                double rate = AccountManager.getHourlyRate(uuid);
+                double hours = 0.0;
+
+                if (rawData.containsKey("rawStart") && rawData.containsKey("rawEnd")) {
+                    LocalTime s = LocalTime.parse(rawData.get("rawStart"));
+                    LocalTime e = LocalTime.parse(rawData.get("rawEnd"));
+                    hours = java.time.Duration.between(s, e).toMinutes() / 60.0;
+                }
+                double pay = hours * rate;
+
+                AccountManager.addEarnings(uuid, pay);
+                AccountManager.removeTask(item.getId());
+
+                loadEmployeeTaskListData();
+                refreshCalendar(uuid);
+
+                if (earningsLabel != null) {
+                    double total = AccountManager.getEarnings(uuid);
+                    earningsLabel.setText(String.format("Total Earnings: $%.2f", total));
+                }
+                AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Complete", String.format("Task completed! Payment added: $%.2f", pay));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void loadEmployeeTaskListData() {
+        if (App.getCurrentUser() == null) return;
+        employeeTaskData.clear();
+        try {
+            List<Map<String, String>> tasks = AccountManager.getTasksForEmployee(App.getCurrentUser().getUuid());
+            for (Map<String, String> t : tasks) {
+                String title = t.getOrDefault("title", "Task");
+                String desc = t.getOrDefault("description", "");
+                String time = t.getOrDefault("time", "");
+                String id = t.get("id");
+                employeeTaskData.add(new EmployeeTaskTableItem(id, title, desc, time, t, this));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static class TaskTableItem {

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import com.dlsc.gemsfx.SelectionBox?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
@@ -27,27 +28,28 @@
                                 <Font name="System Bold" size="11.0" />
                             </font>
                         </Text>
-                  <StackPane>
-                     <children>
-      
-                              <!-- Sign In Button (Replaces Add Employee) -->
-                              <Button fx:id="signInButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onSignInDaily" style="-fx-background-color: #2EC27E; -fx-text-fill: white; -fx-background-radius: 4; -fx-cursor: hand;" text="Sign In Today">
-                                  <padding>
-                                      <Insets bottom="8.0" left="15.0" right="15.0" top="8.0" />
-                                  </padding>
-                                  <font>
-                                      <Font name="System Bold" size="13.0" />
-                                  </font>
-                              </Button>
-      
-                              <!-- Feedback Label for Sign In -->
-                              <Label fx:id="signInText" textFill="#28a745" wrapText="true">
-                                  <font>
-                                      <Font name="System Bold" size="12.0" />
-                                  </font>
-                              </Label>
-                     </children>
-                  </StackPane>
+
+                        <!-- Sign In Section -->
+                        <StackPane alignment="CENTER">
+                            <children>
+                                <Button fx:id="signInButton" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onSignInDaily" style="-fx-background-color: #2EC27E; -fx-text-fill: white; -fx-background-radius: 4; -fx-cursor: hand;" text="Sign In Today">
+                                    <padding>
+                                        <Insets bottom="8.0" left="15.0" right="15.0" top="8.0" />
+                                    </padding>
+                                    <font>
+                                        <Font name="System Bold" size="13.0" />
+                                    </font>
+                                </Button>
+                                <Label fx:id="signInText" visible="false" text="You have signed in today" textFill="#28a745" wrapText="true" textAlignment="CENTER">
+                                    <font>
+                                        <Font name="System Bold" size="13.0" />
+                                    </font>
+                                    <padding>
+                                        <Insets bottom="8.0" top="8.0" />
+                                    </padding>
+                                </Label>
+                            </children>
+                        </StackPane>
 
                         <Separator>
                             <VBox.margin>
@@ -64,8 +66,8 @@
 
                         <VBox spacing="5.0">
                             <children>
-                                <!-- Task List Button (Placeholder for future functionality) -->
-                                <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #495057; -fx-cursor: hand;" text="My Task List">
+                                <!-- Updated Action to onShowEmployeeTasks -->
+                                <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onShowEmployeeTasks" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: #495057; -fx-cursor: hand;" text="My Task List">
                                     <padding>
                                         <Insets bottom="8.0" left="15.0" right="15.0" top="8.0" />
                                     </padding>
@@ -76,7 +78,6 @@
                             </children>
                         </VBox>
 
-                        <!-- Spacer to push Logout to bottom -->
                         <Region VBox.vgrow="ALWAYS" />
 
                         <!-- Logout Button -->
@@ -94,19 +95,32 @@
                         <Insets bottom="20.0" left="30.0" right="30.0" top="30.0" />
                     </padding>
                     <children>
-                        <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Employee Dashboard">
-                            <font>
-                                <Font name="System Bold" size="24.0" />
-                            </font>
-                        </Text>
-                        <Label text="Welcome back! Here is your schedule overview." textFill="#868e96">
-                            <VBox.margin>
-                                <Insets top="5.0" />
-                            </VBox.margin>
-                        </Label>
+                        <HBox alignment="CENTER_LEFT">
+                            <children>
+                                <VBox>
+                                    <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Employee Dashboard">
+                                        <font>
+                                            <Font name="System Bold" size="24.0" />
+                                        </font>
+                                    </Text>
+                                    <Label text="Welcome back! Here is your schedule overview." textFill="#868e96">
+                                        <VBox.margin>
+                                            <Insets top="5.0" />
+                                        </VBox.margin>
+                                    </Label>
+                                </VBox>
+                                <Region HBox.hgrow="ALWAYS" />
+                                <!-- New Earnings Label -->
+                                <Label fx:id="earningsLabel" text="Total Earnings: $0.00" textFill="#28a745">
+                                    <font>
+                                        <Font name="System Bold" size="18.0" />
+                                    </font>
+                                </Label>
+                            </children>
+                        </HBox>
 
-                        <!-- Calendar Container (Controller will inject CalendarFX here) -->
-                        <StackPane fx:id="calendarContainer" style="-fx-border-color: #E0E0E0; -fx-border-radius: 4; -fx-background-radius: 4;" VBox.vgrow="ALWAYS">
+                        <!-- Calendar Container -->
+                        <StackPane fx:id="calendarContainer" VBox.vgrow="ALWAYS" style="-fx-border-color: #E0E0E0; -fx-border-radius: 4; -fx-background-radius: 4;">
                             <VBox.margin>
                                 <Insets top="15.0" />
                             </VBox.margin>

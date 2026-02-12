@@ -120,9 +120,7 @@ public class AccountManager {
         }
     }
 
-    // Helper method to clean up tasks when an employee is removed
     private static void removeTasksForEmployee(String employeeID, String employerUsername) throws IOException {
-        // 1. Remove from tasks.json
         File taskFile = getFile("tasks.json");
         if (taskFile.exists()) {
             List<Map<String, String>> tasks = objectMapper.readValue(taskFile, new TypeReference<>() {});
@@ -136,7 +134,6 @@ public class AccountManager {
             }
         }
 
-        // 2. Reset task status in employee.json
         File empFile = getFile("employee.json");
         if (empFile.exists()) {
             List<Map<String, Object>> employees = objectMapper.readValue(empFile, new TypeReference<>() {});
@@ -260,22 +257,16 @@ public class AccountManager {
 
     // --- Task Management Methods ---
 
-    /**
-     * Assigns a task to a list of employees.
-     * Updates both tasks.json (log) and employee.json (current status).
-     */
     public static void assignTask(List<String> employeeUuids, String title, String description, LocalDate date, LocalTime start, LocalTime end, String employerUsername) throws IOException {
         String timeString = start.format(TIME_FORMATTER) + " - " + end.format(TIME_FORMATTER);
         String dateString = date.format(DATE_FORMATTER);
 
-        // 1. Update Current Task in employee.json
         File empFile = getFile("employee.json");
         if (empFile.exists()) {
             List<Map<String, Object>> employees = objectMapper.readValue(empFile, new TypeReference<>() {});
             boolean empUpdated = false;
             for (Map<String, Object> emp : employees) {
                 if (employeeUuids.contains(emp.get("uuid"))) {
-                    // Update format to include Title
                     emp.put("task", title + ": " + description + " (" + timeString + ")");
                     empUpdated = true;
                 }
@@ -283,7 +274,6 @@ public class AccountManager {
             if (empUpdated) objectMapper.writeValue(empFile, employees);
         }
 
-        // 2. Add to tasks.json log with structural data for expiry checking
         File taskFile = getFile("tasks.json");
         List<Map<String, String>> tasks;
         if (taskFile.exists() && taskFile.length() > 0) {
@@ -299,9 +289,7 @@ public class AccountManager {
             newTask.put("employer", employerUsername);
             newTask.put("title", title);
             newTask.put("description", description);
-            // Store display string
             newTask.put("time", dateString + " " + timeString);
-            // Store raw ISO strings for logic
             newTask.put("rawDate", dateString);
             newTask.put("rawStart", start.format(TIME_FORMATTER));
             newTask.put("rawEnd", end.format(TIME_FORMATTER));
@@ -326,7 +314,6 @@ public class AccountManager {
         return filteredTasks;
     }
 
-    // NEW METHOD: Get tasks specific to an employee
     public static List<Map<String, String>> getTasksForEmployee(String employeeUuid) throws IOException {
         File file = getFile("tasks.json");
         if (!file.exists() || file.length() == 0) return new ArrayList<>();
@@ -342,9 +329,13 @@ public class AccountManager {
         return employeeTasks;
     }
 
-    /**
-     * Removes tasks from tasks.json AND clears the task status in employee.json
-     */
+    // Convenience method to remove a single task
+    public static void removeTask(String taskId) throws IOException {
+        List<String> ids = new ArrayList<>();
+        ids.add(taskId);
+        removeTasks(ids);
+    }
+
     public static void removeTasks(List<String> taskIds) throws IOException {
         File taskFile = getFile("tasks.json");
         if (!taskFile.exists()) return;
@@ -352,18 +343,15 @@ public class AccountManager {
         List<Map<String, String>> tasks = objectMapper.readValue(taskFile, new TypeReference<>() {});
         List<String> affectedEmployeeUuids = new ArrayList<>();
 
-        // Identify employees affected by the removal
         for (Map<String, String> task : tasks) {
             if (taskIds.contains(task.get("id"))) {
                 affectedEmployeeUuids.add(task.get("employeeUuid"));
             }
         }
 
-        // Remove from tasks.json
         tasks.removeIf(task -> taskIds.contains(task.get("id")));
         objectMapper.writeValue(taskFile, tasks);
 
-        // Remove from employee.json (Set task to "None")
         if (!affectedEmployeeUuids.isEmpty()) {
             File empFile = getFile("employee.json");
             if (empFile.exists()) {
@@ -371,7 +359,18 @@ public class AccountManager {
                 boolean empUpdated = false;
                 for (Map<String, Object> emp : employees) {
                     if (affectedEmployeeUuids.contains(emp.get("uuid"))) {
-                        emp.put("task", "None");
+                        // We check if they have other tasks, if not, set to None
+                        List<Map<String, String>> remaining = getTasksForEmployee((String) emp.get("uuid"));
+                        if (remaining.isEmpty()) {
+                            emp.put("task", "None");
+                        } else {
+                            // Optionally update to the next task description
+                            Map<String, String> next = remaining.get(0);
+                            String t = next.getOrDefault("title", "Task");
+                            String d = next.getOrDefault("description", "");
+                            String tm = next.getOrDefault("time", "");
+                            emp.put("task", t + ": " + d + " (" + tm + ")");
+                        }
                         empUpdated = true;
                     }
                 }
@@ -380,10 +379,6 @@ public class AccountManager {
         }
     }
 
-    /**
-     * Checks all tasks.
-     * If the task's date is strictly before today, it is considered expired and removed.
-     */
     public static void checkExpiredTasks() throws IOException {
         File file = getFile("tasks.json");
         if (!file.exists() || file.length() == 0) return;
@@ -396,8 +391,6 @@ public class AccountManager {
             if (task.containsKey("rawDate")) {
                 try {
                     LocalDate taskDate = LocalDate.parse(task.get("rawDate"), DATE_FORMATTER);
-
-                    // Logic: If task date is before today (e.g. task was yesterday), it expires.
                     if (taskDate.isBefore(today)) {
                         expiredIds.add(task.get("id"));
                     }
@@ -469,6 +462,68 @@ public class AccountManager {
             }
         }
         return "None";
+    }
+
+    // --- Payment Calculation Helpers ---
+
+    public static double getHourlyRate(String employeeUuid) throws IOException {
+        String jobTitle = getEmployeeJob(employeeUuid);
+        if ("Unassigned".equals(jobTitle)) return 0.0;
+
+        String employer = findEmployer(employeeUuid);
+        if (employer == null) return 0.0;
+
+        List<Map<String, String>> jobs = getEmployerJobs(employer);
+        for (Map<String, String> j : jobs) {
+            if (jobTitle.equals(j.get("title"))) {
+                try {
+                    return Double.parseDouble(j.get("pay"));
+                } catch (NumberFormatException e) {
+                    return 0.0;
+                }
+            }
+        }
+        return 0.0;
+    }
+
+    public static void addEarnings(String employeeUuid, double amount) throws IOException {
+        File file = getFile("employee.json");
+        if (!file.exists()) return;
+
+        List<Map<String, Object>> employees = objectMapper.readValue(file, new TypeReference<>() {});
+        boolean updated = false;
+
+        for (Map<String, Object> emp : employees) {
+            if (employeeUuid.equals(emp.get("uuid"))) {
+                double current = 0.0;
+                if (emp.containsKey("totalEarnings")) {
+                    current = ((Number) emp.get("totalEarnings")).doubleValue();
+                }
+                emp.put("totalEarnings", current + amount);
+                updated = true;
+                break;
+            }
+        }
+
+        if (updated) {
+            objectMapper.writeValue(file, employees);
+        }
+    }
+
+    public static double getEarnings(String employeeUuid) throws IOException {
+        File file = getFile("employee.json");
+        if (!file.exists()) return 0.0;
+
+        List<Map<String, Object>> employees = objectMapper.readValue(file, new TypeReference<>() {});
+        for (Map<String, Object> emp : employees) {
+            if (employeeUuid.equals(emp.get("uuid"))) {
+                if (emp.containsKey("totalEarnings")) {
+                    return ((Number) emp.get("totalEarnings")).doubleValue();
+                }
+                return 0.0;
+            }
+        }
+        return 0.0;
     }
 
     // Helper to handle path differences
