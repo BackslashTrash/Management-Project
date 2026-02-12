@@ -28,6 +28,12 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.Cursor;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.*;
@@ -45,8 +51,10 @@ import com.calendarfx.model.Calendar;
 import com.calendarfx.model.CalendarSource;
 import com.calendarfx.model.Entry;
 
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -115,10 +123,11 @@ public class Controller implements Initializable {
     @FXML public TableColumn<EmployeeTableItem, String> colName;
     @FXML public TableColumn<EmployeeTableItem, ComboBox<String>> colJob;
     @FXML public TableColumn<EmployeeTableItem, String> colStatus;
-    @FXML public TableColumn<EmployeeTableItem, String> colTask;
+    @FXML public TableColumn<EmployeeTableItem, Node> colTask;
     @FXML public TableColumn<EmployeeTableItem, String> colEarnings;
     @FXML public ComboBox<String> filterJobSelect;
     @FXML public TextField searchEmployeeField;
+    @FXML public Label lastResetLabel;
 
     // --- Task List Screen Fields ---
     @FXML public TableView<TaskTableItem> taskTable;
@@ -172,6 +181,36 @@ public class Controller implements Initializable {
 
     @FXML public void onShowEmployeeTasks(ActionEvent event) throws IOException { navigate(event, 8); }
 
+    @FXML
+    public void onHelp(ActionEvent event) {
+        try {
+            Desktop.getDesktop().browse(new URI("https://github.com/BackslashTrash/Management-Project"));
+        } catch (Exception e) {
+            AccountManager.alertCreator(Alert.AlertType.ERROR, "Error", "Could not open browser.");
+        }
+    }
+
+    @FXML
+    public void onResetPayments(ActionEvent event) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Reset Payments");
+        alert.setHeaderText("Reset all employee earnings to $0.00?");
+        alert.setContentText("This action cannot be undone. It marks the start of a new pay period.");
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                AccountManager.resetAllEarnings(App.getCurrentUser().getUsername());
+                loadEmployeeListData(); // Refresh table
+                if (lastResetLabel != null) {
+                    lastResetLabel.setText("Last Reset: " + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+                }
+                AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "All payments have been reset.");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
     // --- NAVIGATION LOGIC ---
     private void navigate(ActionEvent event, int targetIndex) throws IOException {
         if (targetIndex == currentViewIndex) return;
@@ -820,7 +859,7 @@ public class Controller implements Initializable {
             colName.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getName()));
             colJob.setCellValueFactory(new PropertyValueFactory<>("jobBox"));
             colStatus.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getStatus()));
-            colTask.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTask()));
+            colTask.setCellValueFactory(new PropertyValueFactory<>("taskBox")); // CHANGED to custom HBox
             colEarnings.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getEarnings()));
 
             employeeTable.setItems(filteredData);
