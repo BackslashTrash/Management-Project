@@ -1,1 +1,31 @@
-[ ]
+[ {
+  "rawStart" : "22:00",
+  "employeeUuid" : "Unassigned",
+  "rawEnd" : "23:00",
+  "employer" : "222",
+  "description" : "12212",
+  "id" : "1841f7ef-5848-4ce3-a3da-d3e9863fe86a",
+  "time" : "2026-02-12 22:00 - 23:00",
+  "title" : "12121",
+  "rawDate" : "2026-02-12"
+}, {
+  "rawStart" : "22:00",
+  "employeeUuid" : "81dc9bdb-52d0-3dc2-8036-dbd8313ed055",
+  "rawEnd" : "23:00",
+  "employer" : "222",
+  "description" : "12212",
+  "id" : "ddf0f6b3-a4f3-4b06-b1f4-922d2a0331eb",
+  "time" : "2026-02-12 22:00 - 23:00",
+  "title" : "12121",
+  "rawDate" : "2026-02-12"
+}, {
+  "rawStart" : "22:00",
+  "employeeUuid" : "b59c67bf-196a-3758-991e-42f76670ceba",
+  "rawEnd" : "23:00",
+  "employer" : "222",
+  "description" : "12212",
+  "id" : "ad90f603-f110-4b45-89df-223a62c81f43",
+  "time" : "2026-02-12 22:00 - 23:00",
+  "title" : "12121",
+  "rawDate" : "2026-02-12"
+} ]

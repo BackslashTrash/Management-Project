@@ -291,19 +291,21 @@ public class AccountManager {
         String timeString = start.format(TIME_FORMATTER) + " - " + end.format(TIME_FORMATTER);
         String dateString = date.format(DATE_FORMATTER);
 
-        // 1. Update Current Task in employee.json
-        File empFile = getFile("employee.json");
-        if (empFile.exists()) {
-            List<Map<String, Object>> employees = objectMapper.readValue(empFile, new TypeReference<>() {});
-            boolean empUpdated = false;
-            for (Map<String, Object> emp : employees) {
-                if (employeeUuids.contains(emp.get("uuid"))) {
-                    // Update format to include Title
-                    emp.put("task", title + ": " + description + " (" + timeString + ")");
-                    empUpdated = true;
+        // 1. Update Current Task in employee.json (Only if employees are assigned)
+        if (employeeUuids != null && !employeeUuids.isEmpty()) {
+            File empFile = getFile("employee.json");
+            if (empFile.exists()) {
+                List<Map<String, Object>> employees = objectMapper.readValue(empFile, new TypeReference<>() {});
+                boolean empUpdated = false;
+                for (Map<String, Object> emp : employees) {
+                    if (employeeUuids.contains(emp.get("uuid"))) {
+                        // Update format to include Title
+                        emp.put("task", title + ": " + description + " (" + timeString + ")");
+                        empUpdated = true;
+                    }
                 }
+                if (empUpdated) objectMapper.writeValue(empFile, employees);
             }
-            if (empUpdated) objectMapper.writeValue(empFile, employees);
         }
 
         // 2. Add to tasks.json log with structural data for expiry checking
@@ -315,10 +317,11 @@ public class AccountManager {
             tasks = new ArrayList<>();
         }
 
-        for (String uuid : employeeUuids) {
+        // Handle Case where no employees are selected (Unassigned Task)
+        if (employeeUuids == null || employeeUuids.isEmpty()) {
             Map<String, String> newTask = new HashMap<>();
             newTask.put("id", UUID.randomUUID().toString());
-            newTask.put("employeeUuid", uuid);
+            newTask.put("employeeUuid", "Unassigned");
             newTask.put("employer", employerUsername);
             newTask.put("title", title);
             newTask.put("description", description);
@@ -330,6 +333,23 @@ public class AccountManager {
             newTask.put("rawEnd", end.format(TIME_FORMATTER));
 
             tasks.add(newTask);
+        } else {
+            for (String uuid : employeeUuids) {
+                Map<String, String> newTask = new HashMap<>();
+                newTask.put("id", UUID.randomUUID().toString());
+                newTask.put("employeeUuid", uuid);
+                newTask.put("employer", employerUsername);
+                newTask.put("title", title);
+                newTask.put("description", description);
+                // Store display string
+                newTask.put("time", dateString + " " + timeString);
+                // Store raw ISO strings for logic
+                newTask.put("rawDate", dateString);
+                newTask.put("rawStart", start.format(TIME_FORMATTER));
+                newTask.put("rawEnd", end.format(TIME_FORMATTER));
+
+                tasks.add(newTask);
+            }
         }
         objectMapper.writeValue(taskFile, tasks);
     }

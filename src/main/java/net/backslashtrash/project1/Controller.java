@@ -465,14 +465,13 @@ public class Controller implements Initializable {
             }
         }
 
-        if (selectedUuids.isEmpty()) {
-            AccountManager.alertCreator(Alert.AlertType.WARNING, "Add Task", "No employees selected.");
-            return;
-        }
-
         Dialog<TaskData> dialog = new Dialog<>();
         dialog.setTitle("Assign Task");
-        dialog.setHeaderText("Assign a task to " + selectedUuids.size() + " employee(s).");
+        if (selectedUuids.isEmpty()) {
+            dialog.setHeaderText("Create an unassigned task.");
+        } else {
+            dialog.setHeaderText("Assign a task to " + selectedUuids.size() + " employee(s).");
+        }
 
         ButtonType assignButtonType = new ButtonType("Assign", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(assignButtonType, ButtonType.CANCEL);
@@ -1044,7 +1043,7 @@ public class Controller implements Initializable {
         }
     }
 
-    private void loadEmployeeListData() {
+    public void loadEmployeeListData() {
         if (App.getCurrentUser() == null) return;
         masterData.clear();
 
@@ -1080,7 +1079,7 @@ public class Controller implements Initializable {
                 double earn = AccountManager.getEarnings(uuid);
                 String earningsStr = String.format("$%.2f", earn);
 
-                EmployeeTableItem item = new EmployeeTableItem(uuid, name, job, status, task, earningsStr, availableJobs);
+                EmployeeTableItem item = new EmployeeTableItem(uuid, name, job, status, task, earningsStr, availableJobs, this);
                 item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllState());
                 masterData.add(item);
             }
@@ -1122,8 +1121,12 @@ public class Controller implements Initializable {
                     String empUuid = t.get("employeeUuid");
                     assigneeUuids.add(empUuid);
 
-                    Account emp = findAccount(resourceListJSON[1], empUuid);
-                    assigneeNames.add((emp != null) ? emp.getUsername() : "Unknown");
+                    if ("Unassigned".equals(empUuid)) {
+                        assigneeNames.add("Unassigned");
+                    } else {
+                        Account emp = findAccount(resourceListJSON[1], empUuid);
+                        assigneeNames.add((emp != null) ? emp.getUsername() : "Unknown");
+                    }
                 }
 
                 Map<String, String> rawData = group.get(0);
@@ -1179,8 +1182,9 @@ public class Controller implements Initializable {
         private final String earnings;
         private final CheckBox selectBox;
         private final ComboBox<String> jobBox;
+        private final HBox taskBox;
 
-        public EmployeeTableItem(String uuid, String name, String currentJob, String status, String task, String earnings, List<String> availableJobs) {
+        public EmployeeTableItem(String uuid, String name, String currentJob, String status, String task, String earnings, List<String> availableJobs, Controller controller) {
             this.uuid = uuid;
             this.name = name;
             this.status = status;
@@ -1204,6 +1208,27 @@ public class Controller implements Initializable {
                     ex.printStackTrace();
                 }
             });
+
+            // Initialize taskBox
+            this.taskBox = new HBox(10);
+            this.taskBox.setAlignment(Pos.CENTER_LEFT);
+            Label tLabel = new Label(task != null && !task.isEmpty() ? task : "None");
+            this.taskBox.getChildren().add(tLabel);
+
+            if (task != null && !task.equals("None") && !task.isEmpty()) {
+                Button removeBtn = new Button("X");
+                removeBtn.setStyle("-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: bold; -fx-min-width: 24px; -fx-max-height: 24px; -fx-cursor: hand; -fx-background-radius: 4;");
+                removeBtn.setTooltip(new Tooltip("Remove Task"));
+                removeBtn.setOnAction(e -> {
+                    try {
+                        AccountManager.unassignCurrentTask(uuid);
+                        controller.loadEmployeeListData();
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                });
+                this.taskBox.getChildren().add(removeBtn);
+            }
         }
         public String getUuid() { return uuid; }
         public String getName() { return name; }
@@ -1212,6 +1237,7 @@ public class Controller implements Initializable {
         public String getEarnings() { return earnings; }
         public CheckBox getSelectBox() { return selectBox; }
         public ComboBox<String> getJobBox() { return jobBox; }
+        public Node getTaskBox() { return taskBox; }
     }
 
     public static class EmployeeTaskTableItem {
@@ -1343,7 +1369,7 @@ public class Controller implements Initializable {
             this.selectBox.setCursor(Cursor.HAND);
 
             Label label = new Label(assigneesText);
-            label.setWrapText(true);
+            label.setWrapText(false);
 
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
