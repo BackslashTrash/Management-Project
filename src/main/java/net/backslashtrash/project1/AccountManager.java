@@ -89,6 +89,8 @@ public class AccountManager {
 
         if (updated) {
             objectMapper.writeValue(file, employers);
+            // RESET JOB LOGIC: Ensure new employees start with Unassigned job
+            updateEmployeeJob(employeeID, "Unassigned");
         }
     }
 
@@ -138,39 +140,65 @@ public class AccountManager {
     }
 
     // --- Unassign current task manually (for "X" button) ---
+    // UPDATED: Now handles overlaps by showing the next task instead of clearing everything
     public static void unassignCurrentTask(String employeeUuid) throws IOException {
-        // 1. Clear status in employee.json
+        File taskFile = getFile("tasks.json");
+        List<Map<String, String>> tasks = new ArrayList<>();
+        if (taskFile.exists()) {
+            tasks = objectMapper.readValue(taskFile, new TypeReference<>() {});
+        }
+
+        LocalDate today = LocalDate.now();
+        List<Map<String, String>> activeUserTasks = new ArrayList<>();
+
+        // 1. Identify active tasks for this user
+        for (Map<String, String> t : tasks) {
+            if (employeeUuid.equals(t.get("employeeUuid"))) {
+                if (t.containsKey("rawDate")) {
+                    try {
+                        LocalDate d = LocalDate.parse(t.get("rawDate"), DATE_FORMATTER);
+                        if (!d.isBefore(today)) {
+                            activeUserTasks.add(t);
+                        }
+                    } catch (Exception e) { /* ignore */ }
+                }
+            }
+        }
+
+        // 2. Remove ONE task (the first one found/displayed)
+        if (!activeUserTasks.isEmpty()) {
+            Map<String, String> toRemove = activeUserTasks.get(0);
+            tasks.remove(toRemove); // Removes from main list
+            activeUserTasks.remove(0); // Remove from local list to check overlap
+
+            // Save changes to tasks.json
+            objectMapper.writeValue(taskFile, tasks);
+        }
+
+        // 3. Determine new status string (Next overlapping task or "None")
+        String nextStatus = "None";
+        if (!activeUserTasks.isEmpty()) {
+            // Overlap detected! Show the next one.
+            Map<String, String> next = activeUserTasks.get(0);
+            String title = next.getOrDefault("title", "Task");
+            String desc = next.getOrDefault("description", "");
+            String time = next.getOrDefault("time", "");
+            nextStatus = title + ": " + desc + " (" + time + ")";
+        }
+
+        // 4. Update employee.json with the new status
         File empFile = getFile("employee.json");
         if (empFile.exists()) {
             List<Map<String, Object>> employees = objectMapper.readValue(empFile, new TypeReference<>() {});
             boolean empUpdated = false;
             for (Map<String, Object> emp : employees) {
                 if (employeeUuid.equals(emp.get("uuid"))) {
-                    emp.put("task", "None");
+                    emp.put("task", nextStatus);
                     empUpdated = true;
                     break;
                 }
             }
             if (empUpdated) objectMapper.writeValue(empFile, employees);
-        }
-
-        // 2. Remove active/future tasks from tasks.json for this user
-        File taskFile = getFile("tasks.json");
-        if (taskFile.exists()) {
-            List<Map<String, String>> tasks = objectMapper.readValue(taskFile, new TypeReference<>() {});
-            LocalDate today = LocalDate.now();
-            boolean tasksChanged = tasks.removeIf(task -> {
-                if (!employeeUuid.equals(task.get("employeeUuid"))) return false;
-                // Remove if date is today or future (active tasks)
-                if (task.containsKey("rawDate")) {
-                    try {
-                        LocalDate d = LocalDate.parse(task.get("rawDate"), DATE_FORMATTER);
-                        return !d.isBefore(today);
-                    } catch (Exception e) { return true; }
-                }
-                return true;
-            });
-            if (tasksChanged) objectMapper.writeValue(taskFile, tasks);
         }
     }
 
@@ -356,8 +384,6 @@ public class AccountManager {
             if (taskId.equals(task.get("id"))) {
                 task.put("isPaid", String.valueOf(isPaid));
                 updated = true;
-                // Note: We only update one task entry here.
-                // If it was a group assignment, the Controller might need to call this for each ID in the group.
             }
         }
 
@@ -619,26 +645,44 @@ public class AccountManager {
     }
 
     public static void updateLastPaymentReset(String employerUsername) throws IOException {
-        File employerFile = getFile("employer.json");
-        if (employerFile.exists()) {
-            List<Map<String, Object>> employers = objectMapper.readValue(employerFile, new TypeReference<>() {});
-            for (Map<String, Object> emp : employers) {
-                if (employerUsername.equals(emp.get("username"))) {
-                    emp.put("lastPaymentReset", LocalDateTime.now().format(RESET_TIME_FORMATTER));
-                    objectMapper.writeValue(employerFile, employers);
-                    break;
-                }
+        File file = getFile("lastreset.json");
+        List<Map<String, String>> resetList;
+
+        if (file.exists() && file.length() > 0) {
+            resetList = objectMapper.readValue(file, new TypeReference<>() {});
+        } else {
+            resetList = new ArrayList<>();
+        }
+
+        boolean found = false;
+        String now = LocalDateTime.now().format(RESET_TIME_FORMATTER);
+
+        for (Map<String, String> entry : resetList) {
+            if (employerUsername.equals(entry.get("username"))) {
+                entry.put("lastPaymentReset", now);
+                found = true;
+                break;
             }
         }
+
+        if (!found) {
+            Map<String, String> newEntry = new HashMap<>();
+            newEntry.put("username", employerUsername);
+            newEntry.put("lastPaymentReset", now);
+            resetList.add(newEntry);
+        }
+
+        objectMapper.writeValue(file, resetList);
     }
 
     public static String getLastPaymentReset(String employerUsername) throws IOException {
-        File file = getFile("employer.json");
-        if (!file.exists()) return "Never";
-        List<Map<String, Object>> employers = objectMapper.readValue(file, new TypeReference<>() {});
-        for (Map<String, Object> emp : employers) {
-            if (employerUsername.equals(emp.get("username"))) {
-                return (String) emp.getOrDefault("lastPaymentReset", "Never");
+        File file = getFile("lastreset.json");
+        if (!file.exists() || file.length() == 0) return "Never";
+
+        List<Map<String, String>> resetList = objectMapper.readValue(file, new TypeReference<>() {});
+        for (Map<String, String> entry : resetList) {
+            if (employerUsername.equals(entry.get("username"))) {
+                return entry.getOrDefault("lastPaymentReset", "Never");
             }
         }
         return "Never";

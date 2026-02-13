@@ -61,7 +61,6 @@ import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -246,7 +245,7 @@ public class Controller implements Initializable {
             try {
                 List<Map<String, String>> jobs = AccountManager.getEmployerJobs(App.getCurrentUser().getUsername());
                 List<String> availableJobs = jobs.stream().map(j -> j.get("title")).collect(Collectors.toList());
-                availableJobs.add(0, "Unassigned");
+                availableJobs.addFirst("Unassigned");
 
                 if (filterJobSelect != null) {
                     String currentFilter = filterJobSelect.getValue();
@@ -261,6 +260,13 @@ public class Controller implements Initializable {
                         filterJobSelect.setValue("All Jobs");
                     }
                 }
+
+                // --- FIX: UPDATE LAST RESET LABEL IF EXISTS ---
+                if (lastResetLabel != null) {
+                    String lastReset = AccountManager.getLastPaymentReset(App.getCurrentUser().getUsername());
+                    lastResetLabel.setText("Last Reset: " + lastReset);
+                }
+                // ----------------------------------------------
 
                 ArrayList<String> employeeIds = AccountManager.getEmployerEmployeeList(App.getCurrentUser().getUsername());
                 for (String uuid : employeeIds) {
@@ -314,7 +320,7 @@ public class Controller implements Initializable {
                         }
                     }
 
-                    if (assigneeNames.size() > 1 && assigneeNames.contains("Unassigned")) {
+                    if (assigneeNames.size() > 1) {
                         assigneeNames.remove("Unassigned");
                     }
 
@@ -396,7 +402,9 @@ public class Controller implements Initializable {
                                     start = LocalTime.parse(parts[1]);
                                     end = LocalTime.parse(parts[3]);
                                 }
-                            } catch (Exception e) {}
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
                         }
 
                         if (date != null && start != null && end != null) {
@@ -966,7 +974,6 @@ public class Controller implements Initializable {
         makeButtonStyle(signUpButton, Color.web("#4A93FF"),170,90,0.32, ADD_USER,true);
         makeButtonStyle(loginButton,Color.web("#2EC27E"),170,90,0.32, LOGIN,true);
         makeButtonStyle(confirmLogin,Color.web("#2EC27E"),60,30,0,"",false);
-
 
         if (chooseEmployee != null && App.getCurrentUser() != null) {
             loadEmployerEmployees();
