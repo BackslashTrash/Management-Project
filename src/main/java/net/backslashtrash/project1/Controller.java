@@ -36,6 +36,8 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.effect.DropShadow;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.CycleMethod;
@@ -201,7 +203,7 @@ public class Controller implements Initializable {
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
                 AccountManager.resetAllEarnings(App.getCurrentUser().getUsername());
-                loadEmployeeListData(); // Refresh table
+                loadData(); // REFACTORED: Use central loadData
                 if (lastResetLabel != null) {
                     lastResetLabel.setText("Last Reset: " + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
                 }
@@ -211,6 +213,178 @@ public class Controller implements Initializable {
             }
         }
     }
+
+    // --- CENTRALIZED LOADING LOGIC ---
+    private void loadData() {
+        if (App.getCurrentUser() == null) return;
+
+        // 1. Load Employee List (Employer View)
+        if (employeeTable != null) {
+            masterData.clear();
+            try {
+                // Prepare Filter Dropdown
+                List<String> availableJobs = AccountManager.getEmployerJobs(App.getCurrentUser().getUsername())
+                        .stream().map(j -> j.get("title"))
+                        .collect(Collectors.toList());
+                availableJobs.add(0, "Unassigned");
+
+                if (filterJobSelect != null) {
+                    String currentFilter = filterJobSelect.getValue();
+                    filterJobSelect.getItems().clear();
+                    filterJobSelect.getItems().add("All Jobs");
+                    filterJobSelect.getItems().addAll(availableJobs);
+                    filterJobSelect.getItems().remove("Unassigned");
+
+                    if (currentFilter != null && filterJobSelect.getItems().contains(currentFilter)) {
+                        filterJobSelect.setValue(currentFilter);
+                    } else {
+                        filterJobSelect.setValue("All Jobs");
+                    }
+                }
+
+                // Load Employees
+                ArrayList<String> employeeIds = AccountManager.getEmployerEmployeeList(App.getCurrentUser().getUsername());
+                for (String uuid : employeeIds) {
+                    Account empAccount = findAccount(resourceListJSON[1], uuid);
+                    String name = (empAccount != null) ? empAccount.getUsername() : "Unknown (" + uuid + ")";
+
+                    boolean isSigned = AccountManager.isSignedToday(uuid);
+                    String status = isSigned ? "Signed In" : "Absent";
+                    String job = AccountManager.getEmployeeJob(uuid);
+                    String task = AccountManager.getEmployeeTask(uuid);
+                    double earn = AccountManager.getEarnings(uuid);
+                    String earningsStr = String.format("$%.2f", earn);
+
+                    EmployeeTableItem item = new EmployeeTableItem(uuid, name, job, status, task, earningsStr, availableJobs, this);
+                    item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllState());
+                    masterData.add(item);
+                }
+                masterData.sort(Comparator.comparing(EmployeeTableItem::getName, String.CASE_INSENSITIVE_ORDER));
+            } catch (IOException e) { e.printStackTrace(); }
+        }
+
+        // 2. Load Task List (Employer View)
+        if (taskTable != null) {
+            masterTaskData.clear();
+            try {
+                List<Map<String, String>> tasks = AccountManager.getAllTasks(App.getCurrentUser().getUsername());
+
+                // Group tasks by title/desc/time to handle multiple assignees
+                Map<String, List<Map<String, String>>> groupedTasks = new HashMap<>();
+                for (Map<String, String> t : tasks) {
+                    String title = t.getOrDefault("title", "");
+                    String key = title + "|||" + t.get("description") + "|||" + t.get("time");
+                    groupedTasks.computeIfAbsent(key, k -> new ArrayList<>()).add(t);
+                }
+
+                for (Map.Entry<String, List<Map<String, String>>> entry : groupedTasks.entrySet()) {
+                    List<Map<String, String>> group = entry.getValue();
+                    List<String> ids = new ArrayList<>();
+                    List<String> assigneeUuids = new ArrayList<>();
+                    List<String> assigneeNames = new ArrayList<>();
+
+                    for (Map<String, String> t : group) {
+                        ids.add(t.get("id"));
+                        String empUuid = t.get("employeeUuid");
+                        assigneeUuids.add(empUuid);
+                        if ("Unassigned".equals(empUuid)) {
+                            assigneeNames.add("Unassigned");
+                        } else {
+                            Account emp = findAccount(resourceListJSON[1], empUuid);
+                            assigneeNames.add((emp != null) ? emp.getUsername() : "Unknown");
+                        }
+                    }
+
+                    Map<String, String> rawData = group.get(0);
+                    String namesStr = String.join(", ", assigneeNames);
+
+                    TaskTableItem item = new TaskTableItem(ids, rawData.getOrDefault("title", ""), rawData.get("description"), rawData.get("time"), namesStr, assigneeUuids, rawData, this);
+                    item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllTasksState());
+                    masterTaskData.add(item);
+                }
+                masterTaskData.sort(Comparator.comparing(TaskTableItem::getTitle, String.CASE_INSENSITIVE_ORDER));
+            } catch (IOException e) { e.printStackTrace(); }
+        }
+
+        // 3. Load Job List
+        if (jobTable != null) {
+            masterJobData.clear();
+            try {
+                List<Map<String, String>> jobs = AccountManager.getEmployerJobs(App.getCurrentUser().getUsername());
+                for (Map<String, String> j : jobs) {
+                    JobTableItem item = new JobTableItem(j.get("id"), j.get("title"), j.get("pay"), j.get("description"));
+                    item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllJobsState());
+                    masterJobData.add(item);
+                }
+                masterJobData.sort(Comparator.comparing(JobTableItem::getTitle, String.CASE_INSENSITIVE_ORDER));
+            } catch (IOException e) { e.printStackTrace(); }
+        }
+
+        // 4. Load Employee Personal Tasks
+        if (employeeTaskTable != null) {
+            employeeTaskData.clear();
+            try {
+                List<Map<String, String>> tasks = AccountManager.getTasksForEmployee(App.getCurrentUser().getUuid());
+                for (Map<String, String> t : tasks) {
+                    employeeTaskData.add(new EmployeeTaskTableItem(t.get("id"), t.getOrDefault("title", "Task"), t.getOrDefault("description", ""), t.getOrDefault("time", ""), t, this));
+                }
+            } catch (IOException e) { e.printStackTrace(); }
+        }
+
+        // 5. Calendar Refresh
+        if (calendarContainer != null) {
+            workCalendar.clear();
+            String targetUuid = null;
+
+            // Determine if Employee or Employer View
+            if (signInButton != null) {
+                // Employee View
+                targetUuid = App.getCurrentUser().getUuid();
+            } else if (chooseEmployee != null) {
+                // Employer View
+                String selected = chooseEmployee.getSelectionModel().getSelectedItem();
+                if (selected != null && nameToUuidMap.containsKey(selected)) {
+                    targetUuid = nameToUuidMap.get(selected);
+                }
+            }
+
+            if (targetUuid != null) {
+                try {
+                    List<Map<String, String>> tasks = AccountManager.getTasksForEmployee(targetUuid);
+                    for (Map<String, String> t : tasks) {
+                        String title = t.getOrDefault("title", "Task");
+                        LocalDate date = null;
+                        LocalTime start = null;
+                        LocalTime end = null;
+
+                        if (t.containsKey("rawDate") && t.containsKey("rawStart") && t.containsKey("rawEnd")) {
+                            try {
+                                date = LocalDate.parse(t.get("rawDate"));
+                                start = LocalTime.parse(t.get("rawStart"));
+                                end = LocalTime.parse(t.get("rawEnd"));
+                            } catch (Exception e) {}
+                        } else if (t.containsKey("time")) {
+                            try {
+                                String[] parts = t.get("time").split(" ");
+                                if (parts.length >= 4) {
+                                    date = LocalDate.parse(parts[0]);
+                                    start = LocalTime.parse(parts[1]);
+                                    end = LocalTime.parse(parts[3]);
+                                }
+                            } catch (Exception e) {}
+                        }
+
+                        if (date != null && start != null && end != null) {
+                            Entry<String> entry = new Entry<>(title);
+                            entry.setInterval(date, start, date, end);
+                            workCalendar.addEntry(entry);
+                        }
+                    }
+                } catch (IOException e) { e.printStackTrace(); }
+            }
+        }
+    }
+
     // --- NAVIGATION LOGIC ---
     private void navigate(ActionEvent event, int targetIndex) throws IOException {
         if (targetIndex == currentViewIndex) return;
@@ -252,51 +426,6 @@ public class Controller implements Initializable {
 
     public void onLogin(ActionEvent event) throws IOException {
         navigate(event, Files.LOGIN.INDEX);
-    }
-
-    // --- CALENDAR LOGIC ---
-    private void refreshCalendar(String uuid) {
-        System.out.println("Refreshing calendar for UUID: " + uuid);
-        workCalendar.clear();
-        try {
-            List<Map<String, String>> tasks = AccountManager.getTasksForEmployee(uuid);
-
-            for (Map<String, String> t : tasks) {
-                String title = t.getOrDefault("title", "Task");
-                if (title == null || title.trim().isEmpty()) title = "Task";
-
-                LocalDate date = null;
-                LocalTime start = null;
-                LocalTime end = null;
-
-                if (t.containsKey("rawDate") && t.containsKey("rawStart") && t.containsKey("rawEnd")) {
-                    try {
-                        date = LocalDate.parse(t.get("rawDate"));
-                        start = LocalTime.parse(t.get("rawStart"));
-                        end = LocalTime.parse(t.get("rawEnd"));
-                    } catch (Exception e) { System.out.println("Error parsing raw fields: " + e.getMessage()); }
-                }
-                else if (t.containsKey("time")) {
-                    try {
-                        String timeStr = t.get("time");
-                        String[] parts = timeStr.split(" ");
-                        if (parts.length >= 4) {
-                            date = LocalDate.parse(parts[0]);
-                            start = LocalTime.parse(parts[1]);
-                            end = LocalTime.parse(parts[3]);
-                        }
-                    } catch (Exception e) { System.out.println("Error parsing fallback time string: " + e.getMessage()); }
-                }
-
-                if (date != null && start != null && end != null) {
-                    Entry<String> entry = new Entry<>(title);
-                    entry.setInterval(date, start, date, end);
-                    workCalendar.addEntry(entry);
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     @FXML
@@ -440,8 +569,7 @@ public class Controller implements Initializable {
         result.ifPresent(data -> {
             try {
                 AccountManager.addJob(App.getCurrentUser().getUsername(), data.title, data.desc, data.pay);
-                loadEmployeeListData();
-                loadJobListData();
+                loadData(); // REFACTORED
                 AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Job created successfully!");
             } catch (IOException e) {
                 e.printStackTrace();
@@ -565,8 +693,7 @@ public class Controller implements Initializable {
         result.ifPresent(data -> {
             try {
                 AccountManager.assignTask(selectedUuids, data.title, data.desc, data.date, data.start, data.end, App.getCurrentUser().getUsername());
-                loadEmployeeListData();
-                loadTaskListData();
+                loadData(); // REFACTORED
                 AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Task assigned successfully!");
             } catch (IOException e) {
                 e.printStackTrace();
@@ -609,7 +736,6 @@ public class Controller implements Initializable {
                 CheckBox cb = new CheckBox(name);
                 cb.setUserData(uuid);
 
-                // If the employee is already assigned, disable and check the box visually
                 if (currentAssigneeUuids.contains(uuid)) {
                     cb.setSelected(true);
                     cb.setDisable(true);
@@ -655,7 +781,7 @@ public class Controller implements Initializable {
         Optional<List<String>> result = dialog.showAndWait();
         result.ifPresent(newUuids -> {
             if (!newUuids.isEmpty()) {
-                // Determine Original Task Details (Fallback to current time if parsing fails)
+                // Determine Original Task Details
                 LocalDate date = LocalDate.now();
                 LocalTime start = LocalTime.of(9, 0);
                 LocalTime end = LocalTime.of(17, 0);
@@ -682,7 +808,7 @@ public class Controller implements Initializable {
 
                 try {
                     AccountManager.assignTask(newUuids, taskItem.getTitle(), taskItem.getDescription(), date, start, end, App.getCurrentUser().getUsername());
-                    loadTaskListData();
+                    loadData(); // REFACTORED
                     AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Added " + newUuids.size() + " new employee(s) to the task!");
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -817,6 +943,21 @@ public class Controller implements Initializable {
             calendarView.setShowDeveloperConsole(false);
             calendarView.setShowAddCalendarButton(false);
 
+            // 1. Disable Creating Entries (Stop double-click creation)
+            calendarView.setEntryFactory(param -> null);
+
+            // 2. Disable Detail Popups
+            calendarView.setEntryDetailsCallback(param -> null);
+
+            // 3. Disable Context Menus
+            calendarView.setContextMenuCallback(param -> null);
+
+            // 4. Disable Moving/Editing Entries
+            calendarView.getDayPage().setEntryEditPolicy(p -> false);
+            calendarView.getWeekPage().setEntryEditPolicy(p -> false);
+            calendarView.getMonthPage().setEntryEditPolicy(p -> false);
+            calendarView.getYearPage().setEntryEditPolicy(p -> false);
+
             // Set our custom calendar source
             workCalendar.setStyle(Calendar.Style.STYLE1); // Set a color style
             CalendarSource myCalendarSource = new CalendarSource("My Calendars");
@@ -825,18 +966,13 @@ public class Controller implements Initializable {
 
             calendarContainer.getChildren().add(calendarView);
 
-            // If logged in as Employee, load tasks immediately
-            if (signInButton != null && App.getCurrentUser() != null) { // Employee Dashboard has signInButton
-                refreshCalendar(App.getCurrentUser().getUuid());
-            }
+            // If logged in as Employee, load tasks immediately via central loader
+            // or if Employer, selection listener handles it
 
-            // If logged in as Employer, setup listener for selection
             if (chooseEmployee != null) {
                 // If using JavaFX ComboBox or similar API
                 chooseEmployee.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-                    if (newVal != null && nameToUuidMap.containsKey(newVal)) {
-                        refreshCalendar(nameToUuidMap.get(newVal));
-                    }
+                    loadData(); // REFACTORED: Call central loader
                 });
             }
         }
@@ -858,22 +994,18 @@ public class Controller implements Initializable {
             colName.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getName()));
             colJob.setCellValueFactory(new PropertyValueFactory<>("jobBox"));
             colStatus.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getStatus()));
-            colTask.setCellValueFactory(new PropertyValueFactory<>("taskBox")); // CHANGED to custom HBox
+            colTask.setCellValueFactory(new PropertyValueFactory<>("taskBox")); // custom HBox
             colEarnings.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getEarnings()));
 
             employeeTable.setItems(filteredData);
 
-            // Search field listener
             if (searchEmployeeField != null) {
                 searchEmployeeField.textProperty().addListener((observable, oldValue, newValue) -> updateEmployeeFilter());
             }
 
-            // Filter dropdown listener
             if (filterJobSelect != null) {
                 filterJobSelect.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> updateEmployeeFilter());
             }
-
-            loadEmployeeListData();
         }
 
         // --- Initialize Task List Table ---
@@ -891,24 +1023,21 @@ public class Controller implements Initializable {
             colTaskSelect.setText("");
 
             colTaskSelect.setCellValueFactory(new PropertyValueFactory<>("selectBox"));
-            colTaskTitle.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTitle())); // NEW
+            colTaskTitle.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTitle()));
             colTaskDesc.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getDescription()));
             colTaskTime.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTime()));
             colTaskAssignee.setCellValueFactory(new PropertyValueFactory<>("assigneeBox"));
 
             taskTable.setItems(filteredTaskData);
 
-            // Search field listener - SEARCH BY TITLE
             if (searchTaskField != null) {
                 searchTaskField.textProperty().addListener((observable, oldValue, newValue) -> {
                     filteredTaskData.setPredicate(task -> {
                         if (newValue == null || newValue.trim().isEmpty()) return true;
-                        return task.getTitle().toLowerCase().contains(newValue.toLowerCase()); // Changed to getTitle()
+                        return task.getTitle().toLowerCase().contains(newValue.toLowerCase());
                     });
                 });
             }
-
-            loadTaskListData();
         }
 
         // --- Initialize Job List Table ---
@@ -932,7 +1061,6 @@ public class Controller implements Initializable {
 
             jobTable.setItems(filteredJobData);
 
-            // Search field listener
             if (searchJobField != null) {
                 searchJobField.textProperty().addListener((observable, oldValue, newValue) -> {
                     filteredJobData.setPredicate(job -> {
@@ -941,8 +1069,6 @@ public class Controller implements Initializable {
                     });
                 });
             }
-
-            loadJobListData();
         }
 
         // --- Initialize Employee Personal Task Table ---
@@ -952,7 +1078,6 @@ public class Controller implements Initializable {
             colEmpTaskTime.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTime()));
             colEmpTaskAction.setCellValueFactory(new PropertyValueFactory<>("actionButton"));
             employeeTaskTable.setItems(employeeTaskData);
-            loadEmployeeTaskListData();
         }
 
         if (signInButton != null && App.getCurrentUser() != null && signInText != null) {
@@ -966,6 +1091,9 @@ public class Controller implements Initializable {
                 e.printStackTrace();
             }
         }
+
+        // Initial Data Load using Central Function
+        loadData();
     }
 
     private void updateEmployeeFilter() {
@@ -1043,135 +1171,6 @@ public class Controller implements Initializable {
         }
     }
 
-    public void loadEmployeeListData() {
-        if (App.getCurrentUser() == null) return;
-        masterData.clear();
-
-        try {
-            List<String> availableJobs = AccountManager.getEmployerJobs(App.getCurrentUser().getUsername())
-                    .stream().map(j -> j.get("title"))
-                    .collect(Collectors.toList());
-            availableJobs.add(0, "Unassigned");
-
-            if (filterJobSelect != null) {
-                String currentFilter = filterJobSelect.getValue();
-                filterJobSelect.getItems().clear();
-                filterJobSelect.getItems().add("All Jobs");
-                filterJobSelect.getItems().addAll(availableJobs);
-                filterJobSelect.getItems().remove("Unassigned");
-
-                if (currentFilter != null && filterJobSelect.getItems().contains(currentFilter)) {
-                    filterJobSelect.setValue(currentFilter);
-                } else {
-                    filterJobSelect.setValue("All Jobs");
-                }
-            }
-
-            ArrayList<String> employeeIds = AccountManager.getEmployerEmployeeList(App.getCurrentUser().getUsername());
-            for (String uuid : employeeIds) {
-                Account empAccount = findAccount(resourceListJSON[1], uuid);
-                String name = (empAccount != null) ? empAccount.getUsername() : "Unknown (" + uuid + ")";
-
-                boolean isSigned = AccountManager.isSignedToday(uuid);
-                String status = isSigned ? "Signed In" : "Absent";
-                String job = AccountManager.getEmployeeJob(uuid);
-                String task = AccountManager.getEmployeeTask(uuid);
-                double earn = AccountManager.getEarnings(uuid);
-                String earningsStr = String.format("$%.2f", earn);
-
-                EmployeeTableItem item = new EmployeeTableItem(uuid, name, job, status, task, earningsStr, availableJobs, this);
-                item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllState());
-                masterData.add(item);
-            }
-
-            // Alphabetically sort the employees by Name
-            masterData.sort(Comparator.comparing(EmployeeTableItem::getName, String.CASE_INSENSITIVE_ORDER));
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void loadTaskListData() {
-        if (App.getCurrentUser() == null) return;
-        masterTaskData.clear();
-
-        try {
-            List<Map<String, String>> tasks = AccountManager.getAllTasks(App.getCurrentUser().getUsername());
-
-            // 1. Group Tasks by exactly matching TITLE, description and time.
-            Map<String, List<Map<String, String>>> groupedTasks = new HashMap<>();
-            for (Map<String, String> t : tasks) {
-                String title = t.getOrDefault("title", "");
-                String key = title + "|||" + t.get("description") + "|||" + t.get("time");
-                groupedTasks.computeIfAbsent(key, k -> new ArrayList<>()).add(t);
-            }
-
-            // 2. Process each group into one unified Table Item
-            for (Map.Entry<String, List<Map<String, String>>> entry : groupedTasks.entrySet()) {
-                List<Map<String, String>> group = entry.getValue();
-
-                List<String> ids = new ArrayList<>();
-                List<String> assigneeUuids = new ArrayList<>();
-                List<String> assigneeNames = new ArrayList<>();
-
-                for (Map<String, String> t : group) {
-                    ids.add(t.get("id"));
-
-                    String empUuid = t.get("employeeUuid");
-                    assigneeUuids.add(empUuid);
-
-                    if ("Unassigned".equals(empUuid)) {
-                        assigneeNames.add("Unassigned");
-                    } else {
-                        Account emp = findAccount(resourceListJSON[1], empUuid);
-                        assigneeNames.add((emp != null) ? emp.getUsername() : "Unknown");
-                    }
-                }
-
-                Map<String, String> rawData = group.get(0);
-                String title = rawData.getOrDefault("title", "");
-                String desc = rawData.get("description");
-                String time = rawData.get("time");
-                String namesStr = String.join(", ", assigneeNames);
-
-                TaskTableItem item = new TaskTableItem(ids, title, desc, time, namesStr, assigneeUuids, rawData, this);
-
-                item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllTasksState());
-                masterTaskData.add(item);
-            }
-
-            // Alphabetically sort the tasks by Title
-            masterTaskData.sort(Comparator.comparing(TaskTableItem::getTitle, String.CASE_INSENSITIVE_ORDER));
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void loadJobListData() {
-        if (App.getCurrentUser() == null) return;
-        masterJobData.clear();
-
-        try {
-            List<Map<String, String>> jobs = AccountManager.getEmployerJobs(App.getCurrentUser().getUsername());
-
-            for (Map<String, String> j : jobs) {
-                JobTableItem item = new JobTableItem(
-                        j.get("id"), j.get("title"), j.get("pay"), j.get("description")
-                );
-                item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllJobsState());
-                masterJobData.add(item);
-            }
-
-            // Alphabetically sort the jobs by Title
-            masterJobData.sort(Comparator.comparing(JobTableItem::getTitle, String.CASE_INSENSITIVE_ORDER));
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     // --- Inner Classes ---
 
     public static class EmployeeTableItem {
@@ -1222,7 +1221,7 @@ public class Controller implements Initializable {
                 removeBtn.setOnAction(e -> {
                     try {
                         AccountManager.unassignCurrentTask(uuid);
-                        controller.loadEmployeeListData();
+                        controller.loadData();
                     } catch (IOException ex) {
                         ex.printStackTrace();
                     }
@@ -1318,8 +1317,7 @@ public class Controller implements Initializable {
                 AccountManager.addEarnings(uuid, pay);
                 AccountManager.removeTask(item.getId());
 
-                loadEmployeeTaskListData();
-                refreshCalendar(uuid);
+                loadData(); // REFACTORED
 
                 if (earningsLabel != null) {
                     double total = AccountManager.getEarnings(uuid);
@@ -1332,26 +1330,9 @@ public class Controller implements Initializable {
         }
     }
 
-    private void loadEmployeeTaskListData() {
-        if (App.getCurrentUser() == null) return;
-        employeeTaskData.clear();
-        try {
-            List<Map<String, String>> tasks = AccountManager.getTasksForEmployee(App.getCurrentUser().getUuid());
-            for (Map<String, String> t : tasks) {
-                String title = t.getOrDefault("title", "Task");
-                String desc = t.getOrDefault("description", "");
-                String time = t.getOrDefault("time", "");
-                String id = t.get("id");
-                employeeTaskData.add(new EmployeeTaskTableItem(id, title, desc, time, t, this));
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     public static class TaskTableItem {
         private final List<String> ids;
-        private final String title; // NEW
+        private final String title;
         private final String description;
         private final String time;
         private final CheckBox selectBox;
@@ -1369,7 +1350,9 @@ public class Controller implements Initializable {
             this.selectBox.setCursor(Cursor.HAND);
 
             Label label = new Label(assigneesText);
+            // REMOVED wrapText to prevent row expansion per user request
             label.setWrapText(false);
+            label.setTooltip(new Tooltip(assigneesText)); // Show full list on hover
 
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -1386,7 +1369,7 @@ public class Controller implements Initializable {
         }
 
         public List<String> getIds() { return ids; }
-        public String getTitle() { return title; } // NEW
+        public String getTitle() { return title; }
         public String getDescription() { return description; }
         public String getTime() { return time; }
         public CheckBox getSelectBox() { return selectBox; }
@@ -1536,6 +1519,16 @@ public class Controller implements Initializable {
         }
     }
 
+    @FXML
+    public void onCopyUUID(ActionEvent event) {
+        if (App.getCurrentUser() != null) {
+            Clipboard clipboard = Clipboard.getSystemClipboard();
+            ClipboardContent content = new ClipboardContent();
+            content.putString(App.getCurrentUser().getUuid());
+            clipboard.setContent(content);
+            AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Copied", "Your UUID has been copied to clipboard.");
+        }
+    }
     public void onLogout(ActionEvent event) throws IOException {
         history.clear();
         currentViewIndex = Files.TITLESCREEN.INDEX;
