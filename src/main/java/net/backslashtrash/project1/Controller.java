@@ -138,6 +138,7 @@ public class Controller implements Initializable {
     @FXML public TableColumn<TaskTableItem, String> colTaskDesc;
     @FXML public TableColumn<TaskTableItem, String> colTaskTime;
     @FXML public TableColumn<TaskTableItem, HBox> colTaskAssignee;
+    @FXML public TableColumn<TaskTableItem, ComboBox<String>> colTaskStatus;
     @FXML public TextField searchTaskField;
 
     // --- Job List Screen Fields ---
@@ -203,7 +204,7 @@ public class Controller implements Initializable {
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
                 AccountManager.resetAllEarnings(App.getCurrentUser().getUsername());
-                loadData(); // REFACTORED: Use central loadData
+                loadData();
                 if (lastResetLabel != null) {
                     lastResetLabel.setText("Last Reset: " + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
                 }
@@ -214,18 +215,37 @@ public class Controller implements Initializable {
         }
     }
 
-    // --- CENTRALIZED LOADING LOGIC ---
+    @FXML
+    public void onCopyUUID(ActionEvent event) {
+        if (App.getCurrentUser() != null) {
+            Clipboard clipboard = Clipboard.getSystemClipboard();
+            ClipboardContent content = new ClipboardContent();
+            content.putString(App.getCurrentUser().getUuid());
+            clipboard.setContent(content);
+            AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Copied", "Your UUID has been copied to clipboard.");
+        }
+    }
+
+    // --- CENTRALIZED LOADING LOGIC (MAP BASED) ---
     private void loadData() {
         if (App.getCurrentUser() == null) return;
+
+        // FIX: Update Earnings Label for Employee View immediately on load
+        if (earningsLabel != null && signInButton != null) { // signInButton presence implies Employee View
+            try {
+                double total = AccountManager.getEarnings(App.getCurrentUser().getUuid());
+                earningsLabel.setText(String.format("Total Earnings: $%.2f", total));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
         // 1. Load Employee List (Employer View)
         if (employeeTable != null) {
             masterData.clear();
             try {
-                // Prepare Filter Dropdown
-                List<String> availableJobs = AccountManager.getEmployerJobs(App.getCurrentUser().getUsername())
-                        .stream().map(j -> j.get("title"))
-                        .collect(Collectors.toList());
+                List<Map<String, String>> jobs = AccountManager.getEmployerJobs(App.getCurrentUser().getUsername());
+                List<String> availableJobs = jobs.stream().map(j -> j.get("title")).collect(Collectors.toList());
                 availableJobs.add(0, "Unassigned");
 
                 if (filterJobSelect != null) {
@@ -242,7 +262,6 @@ public class Controller implements Initializable {
                     }
                 }
 
-                // Load Employees
                 ArrayList<String> employeeIds = AccountManager.getEmployerEmployeeList(App.getCurrentUser().getUsername());
                 for (String uuid : employeeIds) {
                     Account empAccount = findAccount(resourceListJSON[1], uuid);
@@ -269,7 +288,7 @@ public class Controller implements Initializable {
             try {
                 List<Map<String, String>> tasks = AccountManager.getAllTasks(App.getCurrentUser().getUsername());
 
-                // Group tasks by title/desc/time to handle multiple assignees
+                // Group tasks
                 Map<String, List<Map<String, String>>> groupedTasks = new HashMap<>();
                 for (Map<String, String> t : tasks) {
                     String title = t.getOrDefault("title", "");
@@ -295,9 +314,14 @@ public class Controller implements Initializable {
                         }
                     }
 
+                    if (assigneeNames.size() > 1 && assigneeNames.contains("Unassigned")) {
+                        assigneeNames.remove("Unassigned");
+                    }
+
                     Map<String, String> rawData = group.get(0);
                     String namesStr = String.join(", ", assigneeNames);
 
+                    // Revert to using Map<String, String> rawData
                     TaskTableItem item = new TaskTableItem(ids, rawData.getOrDefault("title", ""), rawData.get("description"), rawData.get("time"), namesStr, assigneeUuids, rawData, this);
                     item.getSelectBox().selectedProperty().addListener((obs, oldVal, newVal) -> updateSelectAllTasksState());
                     masterTaskData.add(item);
@@ -326,22 +350,23 @@ public class Controller implements Initializable {
             try {
                 List<Map<String, String>> tasks = AccountManager.getTasksForEmployee(App.getCurrentUser().getUuid());
                 for (Map<String, String> t : tasks) {
-                    employeeTaskData.add(new EmployeeTaskTableItem(t.get("id"), t.getOrDefault("title", "Task"), t.getOrDefault("description", ""), t.getOrDefault("time", ""), t, this));
+                    String title = t.getOrDefault("title", "Task");
+                    String desc = t.getOrDefault("description", "");
+                    String time = t.getOrDefault("time", "");
+                    String id = t.get("id");
+                    employeeTaskData.add(new EmployeeTaskTableItem(id, title, desc, time, t, this));
                 }
             } catch (IOException e) { e.printStackTrace(); }
         }
 
         // 5. Calendar Refresh
-        if (calendarContainer != null) {
+        if (calendarContainer != null && calendarContainer.isVisible()) {
             workCalendar.clear();
             String targetUuid = null;
 
-            // Determine if Employee or Employer View
             if (signInButton != null) {
-                // Employee View
                 targetUuid = App.getCurrentUser().getUuid();
             } else if (chooseEmployee != null) {
-                // Employer View
                 String selected = chooseEmployee.getSelectionModel().getSelectedItem();
                 if (selected != null && nameToUuidMap.containsKey(selected)) {
                     targetUuid = nameToUuidMap.get(selected);
@@ -569,7 +594,8 @@ public class Controller implements Initializable {
         result.ifPresent(data -> {
             try {
                 AccountManager.addJob(App.getCurrentUser().getUsername(), data.title, data.desc, data.pay);
-                loadData(); // REFACTORED
+                loadData();
+
                 AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Job created successfully!");
             } catch (IOException e) {
                 e.printStackTrace();
@@ -582,7 +608,7 @@ public class Controller implements Initializable {
         JobData(String t, String d, double p) { title = t; desc = d; pay = p; }
     }
 
-    // --- ADD TASK DIALOG ---
+    // --- ADD TASK DIALOG (UPDATED FOR PAID STATUS) ---
     @FXML
     public void onAddTask(ActionEvent event) {
         if (employeeTable == null) return;
@@ -627,6 +653,10 @@ public class Controller implements Initializable {
         endHour.setEditable(true); endMin.setEditable(true);
         endHour.setPrefWidth(60); endMin.setPrefWidth(60);
 
+        // NEW: CheckBox for Paid/Unpaid
+        CheckBox paidCheckBox = new CheckBox("Paid Task");
+        paidCheckBox.setSelected(true); // Default to paid
+
         grid.add(new Label("Title:"), 0, 0);
         grid.add(taskTitle, 1, 0, 3, 1);
 
@@ -646,6 +676,9 @@ public class Controller implements Initializable {
         HBox endBox = new HBox(5, endHour, new Label(":"), endMin);
         endBox.setAlignment(Pos.CENTER_LEFT);
         grid.add(endBox, 1, 4, 3, 1);
+
+        grid.add(new Label("Status:"), 0, 5);
+        grid.add(paidCheckBox, 1, 5);
 
         dialog.getDialogPane().setContent(grid);
 
@@ -683,7 +716,8 @@ public class Controller implements Initializable {
                         taskDesc.getText(),
                         datePicker.getValue(),
                         LocalTime.of(startHour.getValue(), startMin.getValue()),
-                        LocalTime.of(endHour.getValue(), endMin.getValue())
+                        LocalTime.of(endHour.getValue(), endMin.getValue()),
+                        paidCheckBox.isSelected()
                 );
             }
             return null;
@@ -692,8 +726,8 @@ public class Controller implements Initializable {
         Optional<TaskData> result = dialog.showAndWait();
         result.ifPresent(data -> {
             try {
-                AccountManager.assignTask(selectedUuids, data.title, data.desc, data.date, data.start, data.end, App.getCurrentUser().getUsername());
-                loadData(); // REFACTORED
+                AccountManager.assignTask(selectedUuids, data.title, data.desc, data.date, data.start, data.end, App.getCurrentUser().getUsername(), data.isPaid);
+                loadData();
                 AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Task assigned successfully!");
             } catch (IOException e) {
                 e.printStackTrace();
@@ -702,9 +736,9 @@ public class Controller implements Initializable {
     }
 
     private static class TaskData {
-        String title; String desc; LocalDate date; LocalTime start; LocalTime end;
-        TaskData(String t, String d, LocalDate dt, LocalTime s, LocalTime e) {
-            title = t; desc = d; date = dt; start = s; end = e;
+        String title; String desc; LocalDate date; LocalTime start; LocalTime end; boolean isPaid;
+        TaskData(String t, String d, LocalDate dt, LocalTime s, LocalTime e, boolean paid) {
+            title = t; desc = d; date = dt; start = s; end = e; isPaid = paid;
         }
     }
 
@@ -785,30 +819,30 @@ public class Controller implements Initializable {
                 LocalDate date = LocalDate.now();
                 LocalTime start = LocalTime.of(9, 0);
                 LocalTime end = LocalTime.of(17, 0);
+                boolean isPaid = true; // Default
 
                 try {
-                    if (rawTaskData.containsKey("date")) {
-                        date = LocalDate.parse(rawTaskData.get("date"));
-                    } else if (rawTaskData.containsKey("rawDate")) {
+                    if (rawTaskData.containsKey("rawDate")) {
                         date = LocalDate.parse(rawTaskData.get("rawDate"));
                     }
-                    if (rawTaskData.containsKey("start")) {
-                        start = LocalTime.parse(rawTaskData.get("start"));
-                    } else if (rawTaskData.containsKey("rawStart")) {
+                    if (rawTaskData.containsKey("rawStart")) {
                         start = LocalTime.parse(rawTaskData.get("rawStart"));
                     }
-                    if (rawTaskData.containsKey("end")) {
-                        end = LocalTime.parse(rawTaskData.get("end"));
-                    } else if (rawTaskData.containsKey("rawEnd")) {
+                    if (rawTaskData.containsKey("rawEnd")) {
                         end = LocalTime.parse(rawTaskData.get("rawEnd"));
+                    }
+                    // Extract paid status from raw data if available
+                    if (rawTaskData.containsKey("isPaid")) {
+                        isPaid = Boolean.parseBoolean(rawTaskData.get("isPaid"));
                     }
                 } catch (Exception e) {
                     System.out.println("Could not parse exact date/time from task data. Using defaults.");
                 }
 
                 try {
-                    AccountManager.assignTask(newUuids, taskItem.getTitle(), taskItem.getDescription(), date, start, end, App.getCurrentUser().getUsername());
-                    loadData(); // REFACTORED
+                    // Update: Pass isPaid status
+                    AccountManager.assignTask(newUuids, taskItem.getTitle(), taskItem.getDescription(), date, start, end, App.getCurrentUser().getUsername(), isPaid);
+                    loadData();
                     AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Success", "Added " + newUuids.size() + " new employee(s) to the task!");
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -933,6 +967,7 @@ public class Controller implements Initializable {
         makeButtonStyle(loginButton,Color.web("#2EC27E"),170,90,0.32, LOGIN,true);
         makeButtonStyle(confirmLogin,Color.web("#2EC27E"),60,30,0,"",false);
 
+
         if (chooseEmployee != null && App.getCurrentUser() != null) {
             loadEmployerEmployees();
         }
@@ -943,36 +978,25 @@ public class Controller implements Initializable {
             calendarView.setShowDeveloperConsole(false);
             calendarView.setShowAddCalendarButton(false);
 
-            // 1. Disable Creating Entries (Stop double-click creation)
             calendarView.setEntryFactory(param -> null);
-
-            // 2. Disable Detail Popups
             calendarView.setEntryDetailsCallback(param -> null);
-
-            // 3. Disable Context Menus
             calendarView.setContextMenuCallback(param -> null);
 
-            // 4. Disable Moving/Editing Entries
             calendarView.getDayPage().setEntryEditPolicy(p -> false);
             calendarView.getWeekPage().setEntryEditPolicy(p -> false);
             calendarView.getMonthPage().setEntryEditPolicy(p -> false);
             calendarView.getYearPage().setEntryEditPolicy(p -> false);
 
-            // Set our custom calendar source
-            workCalendar.setStyle(Calendar.Style.STYLE1); // Set a color style
+            workCalendar.setStyle(Calendar.Style.STYLE1);
             CalendarSource myCalendarSource = new CalendarSource("My Calendars");
             myCalendarSource.getCalendars().add(workCalendar);
             calendarView.getCalendarSources().setAll(myCalendarSource);
 
             calendarContainer.getChildren().add(calendarView);
 
-            // If logged in as Employee, load tasks immediately via central loader
-            // or if Employer, selection listener handles it
-
             if (chooseEmployee != null) {
-                // If using JavaFX ComboBox or similar API
                 chooseEmployee.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-                    loadData(); // REFACTORED: Call central loader
+                    loadData();
                 });
             }
         }
@@ -1027,6 +1051,9 @@ public class Controller implements Initializable {
             colTaskDesc.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getDescription()));
             colTaskTime.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTime()));
             colTaskAssignee.setCellValueFactory(new PropertyValueFactory<>("assigneeBox"));
+
+            // NEW: Status Column
+            colTaskStatus.setCellValueFactory(new PropertyValueFactory<>("statusBox"));
 
             taskTable.setItems(filteredTaskData);
 
@@ -1304,26 +1331,40 @@ public class Controller implements Initializable {
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
                 String uuid = App.getCurrentUser().getUuid();
-                double rate = AccountManager.getHourlyRate(uuid);
-                double hours = 0.0;
 
-                if (rawData.containsKey("rawStart") && rawData.containsKey("rawEnd")) {
-                    LocalTime s = LocalTime.parse(rawData.get("rawStart"));
-                    LocalTime e = LocalTime.parse(rawData.get("rawEnd"));
-                    hours = java.time.Duration.between(s, e).toMinutes() / 60.0;
+                // Only pay if task is marked as paid
+                boolean isPaid = true;
+                if (rawData.containsKey("isPaid")) {
+                    isPaid = Boolean.parseBoolean(rawData.get("isPaid"));
                 }
-                double pay = hours * rate;
 
-                AccountManager.addEarnings(uuid, pay);
+                double pay = 0.0;
+                if (isPaid) {
+                    double rate = AccountManager.getHourlyRate(uuid);
+                    if (rate == 0.0) {
+                        AccountManager.alertCreator(Alert.AlertType.WARNING, "Payment Warning",
+                                "Your hourly rate is $0.00. Please ask your employer to assign you a Job Position with a pay rate.");
+                    }
+                    double hours = 0.0;
+                    if (rawData.containsKey("rawStart") && rawData.containsKey("rawEnd")) {
+                        LocalTime s = LocalTime.parse(rawData.get("rawStart"));
+                        LocalTime e = LocalTime.parse(rawData.get("rawEnd"));
+                        hours = java.time.Duration.between(s, e).toMinutes() / 60.0;
+                    }
+                    pay = hours * rate;
+                    AccountManager.addEarnings(uuid, pay);
+                }
+
                 AccountManager.removeTask(item.getId());
-
-                loadData(); // REFACTORED
+                loadData();
 
                 if (earningsLabel != null) {
                     double total = AccountManager.getEarnings(uuid);
                     earningsLabel.setText(String.format("Total Earnings: $%.2f", total));
                 }
-                AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Complete", String.format("Task completed! Payment added: $%.2f", pay));
+
+                String msg = isPaid ? String.format("Task completed! Payment added: $%.2f", pay) : "Task completed! (Unpaid)";
+                AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Complete", msg);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -1336,6 +1377,7 @@ public class Controller implements Initializable {
         private final String description;
         private final String time;
         private final CheckBox selectBox;
+        private final ComboBox<String> statusBox; // NEW
 
         private final HBox assigneeBox;
 
@@ -1350,9 +1392,8 @@ public class Controller implements Initializable {
             this.selectBox.setCursor(Cursor.HAND);
 
             Label label = new Label(assigneesText);
-            // REMOVED wrapText to prevent row expansion per user request
             label.setWrapText(false);
-            label.setTooltip(new Tooltip(assigneesText)); // Show full list on hover
+            label.setTooltip(new Tooltip(assigneesText));
 
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -1366,6 +1407,33 @@ public class Controller implements Initializable {
 
             this.assigneeBox = new HBox(10, label, spacer, addButton);
             this.assigneeBox.setAlignment(Pos.CENTER_LEFT);
+
+            // Status ComboBox Logic
+            this.statusBox = new ComboBox<>();
+            this.statusBox.getItems().addAll("Paid", "Unpaid");
+
+            // Set initial value from rawData
+            boolean isPaid = true;
+            if (rawTaskData.containsKey("isPaid")) {
+                isPaid = Boolean.parseBoolean(rawTaskData.get("isPaid"));
+            }
+            this.statusBox.setValue(isPaid ? "Paid" : "Unpaid");
+
+            // Style
+            this.statusBox.setStyle("-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4;");
+
+            // Listener
+            this.statusBox.setOnAction(e -> {
+                boolean newPaidStatus = "Paid".equals(this.statusBox.getValue());
+                try {
+                    // Update all tasks in this group (since this Item represents a group)
+                    for (String id : ids) {
+                        AccountManager.updateTaskPaidStatus(id, newPaidStatus);
+                    }
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            });
         }
 
         public List<String> getIds() { return ids; }
@@ -1374,6 +1442,7 @@ public class Controller implements Initializable {
         public String getTime() { return time; }
         public CheckBox getSelectBox() { return selectBox; }
         public HBox getAssigneeBox() { return assigneeBox; }
+        public ComboBox<String> getStatusBox() { return statusBox; } // NEW
     }
 
     public static class JobTableItem {
@@ -1519,16 +1588,6 @@ public class Controller implements Initializable {
         }
     }
 
-    @FXML
-    public void onCopyUUID(ActionEvent event) {
-        if (App.getCurrentUser() != null) {
-            Clipboard clipboard = Clipboard.getSystemClipboard();
-            ClipboardContent content = new ClipboardContent();
-            content.putString(App.getCurrentUser().getUuid());
-            clipboard.setContent(content);
-            AccountManager.alertCreator(Alert.AlertType.INFORMATION, "Copied", "Your UUID has been copied to clipboard.");
-        }
-    }
     public void onLogout(ActionEvent event) throws IOException {
         history.clear();
         currentViewIndex = Files.TITLESCREEN.INDEX;

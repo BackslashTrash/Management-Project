@@ -19,32 +19,27 @@
         <!-- Header Section -->
         <HBox alignment="CENTER_LEFT" spacing="15.0">
             <children>
-                <!-- FIX: Changed action to #onBack -->
                 <Button mnemonicParsing="false" onAction="#onBack" style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand;" text="← Back">
                     <font>
                         <Font size="13.0" />
                     </font>
+                    <padding>
+                        <Insets bottom="8.0" left="12.0" right="12.0" top="8.0" />
+                    </padding>
                 </Button>
-                <Label text="Task Log" textFill="#343a40">
+                <Label text="Task Management" textFill="#343a40">
                     <font>
                         <Font name="System Bold" size="24.0" />
                     </font>
                 </Label>
+                <Region HBox.hgrow="ALWAYS" />
             </children>
         </HBox>
 
         <!-- Toolbar Section -->
-        <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 0);">
-            <padding>
-                <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
-            </padding>
+        <HBox alignment="CENTER_LEFT" spacing="10.0">
             <children>
-                <Label text="Manage assigned tasks below." textFill="#6c757d">
-                    <font>
-                        <Font size="13.0" />
-                    </font>
-                </Label>
-                <TextField fx:id="searchTaskField" prefWidth="220.0" promptText="Search by task title..." style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 6;" />
+                <TextField fx:id="searchTaskField" prefHeight="35.0" prefWidth="250.0" promptText="Search tasks..." style="-fx-background-color: white; -fx-border-color: #CED4DA; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 6;" />
                 <Region HBox.hgrow="ALWAYS" />
                 <Button mnemonicParsing="false" onAction="#onRemoveSelectedTasks" style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-background-radius: 4; -fx-cursor: hand;" text="Delete Selected">
                     <font>
@@ -58,13 +53,15 @@
         </HBox>
 
         <!-- Table Section -->
-        <TableView fx:id="taskTable" VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 0);">
+        <TableView fx:id="taskTable" style="-fx-background-color: white; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 0);" VBox.vgrow="ALWAYS">
             <columns>
                 <TableColumn fx:id="colTaskSelect" prefWidth="50.0" sortable="false" style="-fx-alignment: CENTER;" text="" />
                 <TableColumn fx:id="colTaskTitle" prefWidth="150.0" text="Title" />
-                <TableColumn fx:id="colTaskDesc" prefWidth="300.0" text="Task Description" />
+                <TableColumn fx:id="colTaskDesc" prefWidth="250.0" text="Task Description" />
                 <TableColumn fx:id="colTaskTime" prefWidth="150.0" text="Time" />
-                <TableColumn fx:id="colTaskAssignee" prefWidth="250.0" text="Assigned To" />
+                <TableColumn fx:id="colTaskAssignee" prefWidth="150.0" text="Assigned To" />
+                <!-- Added Status Column -->
+                <TableColumn fx:id="colTaskStatus" prefWidth="100.0" text="Status" />
             </columns>
             <columnResizePolicy>
                 <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />

@@ -39,10 +39,7 @@ public class AccountManager {
 
     public static boolean register(String type, String username, String password) throws IOException {
         ArrayList<Account> accountList = new ArrayList<>();
-        File file = new File("src/main/resources/net/backslashtrash/project1/objects/",type.toLowerCase() + ".json");
-        if (!file.exists()) {
-            file = new File("src/main/resources/net/backslashtrash/objects/",type.toLowerCase() + ".json");
-        }
+        File file = getFile(type.toLowerCase() + ".json");
 
         if (file.exists() && file.length()>0) {
             accountList = objectMapper.readValue(file, new TypeReference<>() {});
@@ -286,8 +283,9 @@ public class AccountManager {
     /**
      * Assigns a task to a list of employees.
      * Updates both tasks.json (log) and employee.json (current status).
+     * Now supports Paid/Unpaid status.
      */
-    public static void assignTask(List<String> employeeUuids, String title, String description, LocalDate date, LocalTime start, LocalTime end, String employerUsername) throws IOException {
+    public static void assignTask(List<String> employeeUuids, String title, String description, LocalDate date, LocalTime start, LocalTime end, String employerUsername, boolean isPaid) throws IOException {
         String timeString = start.format(TIME_FORMATTER) + " - " + end.format(TIME_FORMATTER);
         String dateString = date.format(DATE_FORMATTER);
 
@@ -319,39 +317,53 @@ public class AccountManager {
 
         // Handle Case where no employees are selected (Unassigned Task)
         if (employeeUuids == null || employeeUuids.isEmpty()) {
-            Map<String, String> newTask = new HashMap<>();
-            newTask.put("id", UUID.randomUUID().toString());
-            newTask.put("employeeUuid", "Unassigned");
-            newTask.put("employer", employerUsername);
-            newTask.put("title", title);
-            newTask.put("description", description);
-            // Store display string
-            newTask.put("time", dateString + " " + timeString);
-            // Store raw ISO strings for logic
-            newTask.put("rawDate", dateString);
-            newTask.put("rawStart", start.format(TIME_FORMATTER));
-            newTask.put("rawEnd", end.format(TIME_FORMATTER));
-
-            tasks.add(newTask);
+            createTaskEntry(tasks, "Unassigned", title, description, dateString, timeString, start, end, employerUsername, isPaid);
         } else {
             for (String uuid : employeeUuids) {
-                Map<String, String> newTask = new HashMap<>();
-                newTask.put("id", UUID.randomUUID().toString());
-                newTask.put("employeeUuid", uuid);
-                newTask.put("employer", employerUsername);
-                newTask.put("title", title);
-                newTask.put("description", description);
-                // Store display string
-                newTask.put("time", dateString + " " + timeString);
-                // Store raw ISO strings for logic
-                newTask.put("rawDate", dateString);
-                newTask.put("rawStart", start.format(TIME_FORMATTER));
-                newTask.put("rawEnd", end.format(TIME_FORMATTER));
-
-                tasks.add(newTask);
+                createTaskEntry(tasks, uuid, title, description, dateString, timeString, start, end, employerUsername, isPaid);
             }
         }
         objectMapper.writeValue(taskFile, tasks);
+    }
+
+    private static void createTaskEntry(List<Map<String, String>> tasks, String uuid, String title, String desc, String dateStr, String timeStr, LocalTime start, LocalTime end, String employer, boolean isPaid) {
+        Map<String, String> newTask = new HashMap<>();
+        newTask.put("id", UUID.randomUUID().toString());
+        newTask.put("employeeUuid", uuid);
+        newTask.put("employer", employer);
+        newTask.put("title", title);
+        newTask.put("description", desc);
+        // Store display string
+        newTask.put("time", dateStr + " " + timeStr);
+        // Store raw ISO strings for logic
+        newTask.put("rawDate", dateStr);
+        newTask.put("rawStart", start.format(TIME_FORMATTER));
+        newTask.put("rawEnd", end.format(TIME_FORMATTER));
+        // Store Paid Status
+        newTask.put("isPaid", String.valueOf(isPaid));
+
+        tasks.add(newTask);
+    }
+
+    public static void updateTaskPaidStatus(String taskId, boolean isPaid) throws IOException {
+        File file = getFile("tasks.json");
+        if (!file.exists()) return;
+
+        List<Map<String, String>> tasks = objectMapper.readValue(file, new TypeReference<>() {});
+        boolean updated = false;
+
+        for (Map<String, String> task : tasks) {
+            if (taskId.equals(task.get("id"))) {
+                task.put("isPaid", String.valueOf(isPaid));
+                updated = true;
+                // Note: We only update one task entry here.
+                // If it was a group assignment, the Controller might need to call this for each ID in the group.
+            }
+        }
+
+        if (updated) {
+            objectMapper.writeValue(file, tasks);
+        }
     }
 
     public static List<Map<String, String>> getAllTasks(String employerUsername) throws IOException {
@@ -369,7 +381,6 @@ public class AccountManager {
         return filteredTasks;
     }
 
-    // NEW METHOD: Get tasks specific to an employee
     public static List<Map<String, String>> getTasksForEmployee(String employeeUuid) throws IOException {
         File file = getFile("tasks.json");
         if (!file.exists() || file.length() == 0) return new ArrayList<>();
@@ -385,9 +396,6 @@ public class AccountManager {
         return employeeTasks;
     }
 
-    /**
-     * Removes tasks from tasks.json AND clears the task status in employee.json
-     */
     public static void removeTask(String taskId) throws IOException {
         List<String> ids = new ArrayList<>();
         ids.add(taskId);
@@ -440,10 +448,6 @@ public class AccountManager {
         }
     }
 
-    /**
-     * Checks all tasks.
-     * If the task's date is strictly before today, it is considered expired and removed.
-     */
     public static void checkExpiredTasks() throws IOException {
         File file = getFile("tasks.json");
         if (!file.exists() || file.length() == 0) return;
@@ -456,8 +460,6 @@ public class AccountManager {
             if (task.containsKey("rawDate")) {
                 try {
                     LocalDate taskDate = LocalDate.parse(task.get("rawDate"), DATE_FORMATTER);
-
-                    // Logic: If task date is before today (e.g. task was yesterday), it expires.
                     if (taskDate.isBefore(today)) {
                         expiredIds.add(task.get("id"));
                     }
@@ -613,6 +615,10 @@ public class AccountManager {
         }
 
         // 3. Update employer reset time
+        updateLastPaymentReset(employerUsername);
+    }
+
+    public static void updateLastPaymentReset(String employerUsername) throws IOException {
         File employerFile = getFile("employer.json");
         if (employerFile.exists()) {
             List<Map<String, Object>> employers = objectMapper.readValue(employerFile, new TypeReference<>() {});
