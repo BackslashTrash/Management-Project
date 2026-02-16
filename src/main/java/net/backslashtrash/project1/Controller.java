@@ -173,6 +173,8 @@ public class Controller implements Initializable {
             "attendance","employee","employer"
     };
 
+
+    //--- THESE GUYS ARE SVG IMAGE PATHS ---
     private static final String ADD_USER =
             "M21.9,37c0-2.7,0.9-5.8,2.3-8.2c1.7-3,3.6-4.2,5.1-6.4c2.5-3.7,3-9,1.4-13c-1.6-4.1-5.4-6.5-9.8-6.4s-8,2.8-9.4,6.9c-1.6,4.5-0.9,9.9,2.7,13.3c1.5,1.4,2.9,3.6,2.1,5.7c-0.7,2-3.1,2.9-4.8,3.7c-3.9,1.7-8.6,4.1-9.4,8.7C1.3,45.1,3.9,49,8,49h17c0.8,0,1.3-1,0.8-1.6C23.3,44.5,21.9,40.8,21.9,37z" +
                     "M37.9,25c-6.6,0-12,5.4-12,12s5.4,12,12,12s12-5.4,12-12S44.5,25,37.9,25z M44,38c0,0.6-0.5,1-1.1,1H40v3 c0,0.6-0.5,1-1.1,1h-2c-0.6,0-0.9-0.4-0.9-1v-3h-3.1c-0.6,0-0.9-0.4-0.9-1v-2c0-0.6,0.3-1,0.9-1H36v-3c0-0.6,0.3-1,0.9-1h2 c0.6,0,1.1,0.4,1.1,1v3h2.9c0.6,0,1.1,0.4,1.1,1V38z";
@@ -183,6 +185,10 @@ public class Controller implements Initializable {
 
     @FXML public void onShowEmployeeTasks(ActionEvent event) throws IOException { navigate(event, 8); }
 
+
+    /*
+    * Bottom right question mark button that opens project github
+    * */
     @FXML
     public void onHelp(ActionEvent event) {
         try {
@@ -192,6 +198,9 @@ public class Controller implements Initializable {
         }
     }
 
+    /*
+     * Employer's reset payment button on top right in employee list tab
+     * */
     @FXML
     public void onResetPayments(ActionEvent event) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -214,6 +223,10 @@ public class Controller implements Initializable {
         }
     }
 
+
+    /*
+     * Employee's copy UUID button that copies the user's UUID to clipboard
+     * */
     @FXML
     public void onCopyUUID(ActionEvent event) {
         if (App.getCurrentUser() != null) {
@@ -225,7 +238,7 @@ public class Controller implements Initializable {
         }
     }
 
-    // --- CENTRALIZED LOADING LOGIC (MAP BASED) ---
+    // --- LOAD ALL DATA ---
     private void loadData() {
         if (App.getCurrentUser() == null) return;
 
@@ -261,7 +274,7 @@ public class Controller implements Initializable {
                     }
                 }
 
-                // --- FIX: UPDATE LAST RESET LABEL IF EXISTS ---
+                // --- UPDATE LAST RESET LABEL IF EXISTS ---
                 if (lastResetLabel != null) {
                     String lastReset = AccountManager.getLastPaymentReset(App.getCurrentUser().getUsername());
                     lastResetLabel.setText("Last Reset: " + lastReset);
@@ -426,6 +439,7 @@ public class Controller implements Initializable {
         switchScene(event, FXMLLoader.load(App.class.getResource(resourceListFXML[targetIndex])));
     }
 
+    //--- Back button in employer top left
     @FXML
     public void onBack(ActionEvent event) throws IOException {
         if (!history.isEmpty()) {
@@ -451,7 +465,7 @@ public class Controller implements Initializable {
         }
     }
 
-    // ------------------------
+    // ----------- SIGN UP AND LOGIN --------
 
     public void onSignup(ActionEvent event) throws IOException {
         navigate(event, Files.REGISTER.INDEX);
@@ -480,6 +494,9 @@ public class Controller implements Initializable {
         warningMessage.setText("Username or password incorrect");
     }
 
+    /*
+    * Registers account after it passed the requirement check
+    * */
     @FXML
     public void onConfirmRegister(ActionEvent event) throws IOException {
         if (isAccountValid()){
@@ -616,7 +633,7 @@ public class Controller implements Initializable {
         JobData(String t, String d, double p) { title = t; desc = d; pay = p; }
     }
 
-    // --- ADD TASK DIALOG (UPDATED FOR PAID STATUS) ---
+    // --- ADD TASK DIALOG ---
     @FXML
     public void onAddTask(ActionEvent event) {
         if (employeeTable == null) return;
@@ -860,6 +877,9 @@ public class Controller implements Initializable {
         });
     }
 
+    /*
+     * Remove selected button in employee section
+     * */
     @FXML
     public void onRemoveSelected(ActionEvent event) {
         if (employeeTable == null || App.getCurrentUser() == null) return;
@@ -892,6 +912,9 @@ public class Controller implements Initializable {
         }
     }
 
+    /*
+     * Remove selected button in tasks section
+     * */
     @FXML
     public void onRemoveSelectedTasks(ActionEvent event) {
         if (taskTable == null || App.getCurrentUser() == null) return;
@@ -922,6 +945,10 @@ public class Controller implements Initializable {
         }
     }
 
+
+    /*
+    * Remove selected button in jobs section
+    * */
     @FXML
     public void onRemoveSelectedJobs(ActionEvent event) {
         if (jobTable == null || App.getCurrentUser() == null) return;
@@ -960,6 +987,10 @@ public class Controller implements Initializable {
         stage.show();
     }
 
+
+    /*
+    * Load data and set styles for buttons
+    * */
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         try {
@@ -1130,6 +1161,9 @@ public class Controller implements Initializable {
         loadData();
     }
 
+    /*
+    * Employee filter by job functionality
+    * */
     private void updateEmployeeFilter() {
         String searchString = searchEmployeeField != null ? searchEmployeeField.getText() : null;
         String jobFilter = filterJobSelect != null ? filterJobSelect.getValue() : null;
@@ -1149,6 +1183,9 @@ public class Controller implements Initializable {
         });
     }
 
+    /*
+     * Select all employee button
+     * */
     private void updateSelectAllState() {
         if (selectAllCheckBox == null || employeeTable == null) return;
         boolean allSelected = !employeeTable.getItems().isEmpty();
@@ -1161,6 +1198,9 @@ public class Controller implements Initializable {
         selectAllCheckBox.setSelected(allSelected);
     }
 
+    /*
+    * Select all task button
+    * */
     private void updateSelectAllTasksState() {
         if (selectAllTasksCheckBox == null || taskTable == null) return;
         boolean allSelected = !taskTable.getItems().isEmpty();
@@ -1172,7 +1212,9 @@ public class Controller implements Initializable {
         }
         selectAllTasksCheckBox.setSelected(allSelected);
     }
-
+    /*
+     * Select all jobs button
+     * */
     private void updateSelectAllJobsState() {
         if (selectAllJobsCheckBox == null || jobTable == null) return;
         boolean allSelected = !jobTable.getItems().isEmpty();
@@ -1309,6 +1351,10 @@ public class Controller implements Initializable {
         public Map<String, String> getRawData() { return rawData; }
     }
 
+
+    /*
+    * Employee complete task button
+    * */
     public void onCompleteTask(EmployeeTaskTableItem item) {
         // 1. Time Validation
         Map<String, String> rawData = item.getRawData();
@@ -1333,7 +1379,6 @@ public class Controller implements Initializable {
         alert.setTitle("Complete Task");
         alert.setHeaderText("Mark task as complete?");
         alert.setContentText("This will remove the task and calculate payment.");
-
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
@@ -1449,7 +1494,7 @@ public class Controller implements Initializable {
         public String getTime() { return time; }
         public CheckBox getSelectBox() { return selectBox; }
         public HBox getAssigneeBox() { return assigneeBox; }
-        public ComboBox<String> getStatusBox() { return statusBox; } // NEW
+        public ComboBox<String> getStatusBox() { return statusBox; }
     }
 
     public static class JobTableItem {
@@ -1475,6 +1520,10 @@ public class Controller implements Initializable {
         public CheckBox getSelectBox() { return selectBox; }
     }
 
+
+    /*
+    * Check if account at register is valid
+    * */
     private boolean isAccountValid() {
         String username =  enterUser.getText();
         String pass = enterPass.getText();
@@ -1499,6 +1548,7 @@ public class Controller implements Initializable {
         return lastRoot;
     }
 
+    //Account invalid error text
     private boolean accountInvalid(String message){
         warningMessage.setText(message);
         return false;
@@ -1510,6 +1560,9 @@ public class Controller implements Initializable {
         System.out.println(enterPass.getText());
     }
 
+    /*
+    * Locates account in specified file using user & pass
+    * */
     private Account findAccount(String filename, String user, String pass) throws IOException {
         File file =  new File("src/main/resources/net/backslashtrash/project1/objects/",filename + ".json");
         if (!file.exists()) {
@@ -1527,6 +1580,10 @@ public class Controller implements Initializable {
         return null;
     }
 
+
+    /*
+    Locates account in specified file using UUID
+     */
     private Account findAccount(String filename, String UUID) throws IOException{
         File file =  new File("src/main/resources/net/backslashtrash/project1/objects/",filename + ".json");
         if (!file.exists()) {
@@ -1544,6 +1601,11 @@ public class Controller implements Initializable {
         return null;
     }
 
+
+
+    /*
+    * Employee's daily sign in button
+    * */
     @FXML
     public void onSignInDaily(ActionEvent event) {
         Account account =  App.getCurrentUser();
@@ -1563,11 +1625,18 @@ public class Controller implements Initializable {
         }
     }
 
+    /*
+    * Login account
+    * */
     private void loginAccount(Account account,ActionEvent event, int index) throws IOException {
         App.lock(account);
         navigate(event, index);
     }
 
+
+    /*
+    * Employer's add employee button
+    * */
     @FXML
     public void onAddEmployee(ActionEvent event) throws IOException {
         TextInputDialog addEmployee = new TextInputDialog();
@@ -1595,6 +1664,9 @@ public class Controller implements Initializable {
         }
     }
 
+    /*
+    * Log out account button on bottom left
+    * */
     public void onLogout(ActionEvent event) throws IOException {
         history.clear();
         currentViewIndex = Files.TITLESCREEN.INDEX;
@@ -1607,6 +1679,7 @@ public class Controller implements Initializable {
         applyTileStyle(button, base, svgPath,prefWidth,prefHeight,glyphsize,enableStrip);
     }
 
+    //Makes the main screen buttons look good
     private void applyTileStyle(Button button, Color accent, String svgPath, double prefWidth, double prefHeight, double glyphsize, boolean enableStrip) {
         double radius = 0;
         CornerRadii radii = new CornerRadii(radius);

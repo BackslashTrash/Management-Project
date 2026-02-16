@@ -19,10 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.HashMap;
-import java.util.stream.Collectors;
 
 public class AccountManager {
-    // Configured to not fail on unknown properties
     private static final ObjectMapper objectMapper = JsonMapper
             .builder()
             .enable(SerializationFeature.INDENT_OUTPUT)
@@ -37,6 +35,10 @@ public class AccountManager {
 
     }
 
+    /*
+    * Registers the account if not found in the database, gives employees their UUIDs, writes the account into the JSON file.
+    *
+    * */
     public static boolean register(String type, String username, String password) throws IOException {
         ArrayList<Account> accountList = new ArrayList<>();
         File file = getFile(type.toLowerCase() + ".json");
@@ -89,7 +91,7 @@ public class AccountManager {
 
         if (updated) {
             objectMapper.writeValue(file, employers);
-            // RESET JOB LOGIC: Ensure new employees start with Unassigned job
+            //Ensure new employees start with an unassigned job
             updateEmployeeJob(employeeID, "Unassigned");
         }
     }
@@ -167,9 +169,9 @@ public class AccountManager {
 
         // 2. Remove ONE task (the first one found/displayed)
         if (!activeUserTasks.isEmpty()) {
-            Map<String, String> toRemove = activeUserTasks.get(0);
+            Map<String, String> toRemove = activeUserTasks.getFirst();
             tasks.remove(toRemove); // Removes from main list
-            activeUserTasks.remove(0); // Remove from local list to check overlap
+            activeUserTasks.removeFirst(); // Remove from local list to check overlap
 
             // Save changes to tasks.json
             objectMapper.writeValue(taskFile, tasks);
@@ -257,6 +259,9 @@ public class AccountManager {
         objectMapper.writeValue(file, attendanceList);
     }
 
+    /*
+    * Check for employee sign in status
+    * */
     public static boolean isSignedToday(String employeeUuid) throws IOException {
         File file = getFile("attendance.json");
         if (!file.exists() || file.length() == 0) return false;
@@ -272,6 +277,9 @@ public class AccountManager {
         return false;
     }
 
+    /*
+    * Sets employee's job
+    * */
     public static void updateEmployeeJob(String employeeUuid, String newJob) throws IOException {
         File file = getFile("employee.json");
         if (!file.exists()) return;
@@ -292,6 +300,11 @@ public class AccountManager {
         }
     }
 
+
+    /*
+    *
+    *
+    * */
     public static String getEmployeeJob(String employeeUuid) throws IOException {
         File file = getFile("employee.json");
         if (!file.exists()) return "Unassigned";
@@ -311,7 +324,6 @@ public class AccountManager {
     /**
      * Assigns a task to a list of employees.
      * Updates both tasks.json (log) and employee.json (current status).
-     * Now supports Paid/Unpaid status.
      */
     public static void assignTask(List<String> employeeUuids, String title, String description, LocalDate date, LocalTime start, LocalTime end, String employerUsername, boolean isPaid) throws IOException {
         String timeString = start.format(TIME_FORMATTER) + " - " + end.format(TIME_FORMATTER);
@@ -675,6 +687,7 @@ public class AccountManager {
         objectMapper.writeValue(file, resetList);
     }
 
+    //Shows the last payment reset
     public static String getLastPaymentReset(String employerUsername) throws IOException {
         File file = getFile("lastreset.json");
         if (!file.exists() || file.length() == 0) return "Never";
@@ -697,6 +710,10 @@ public class AccountManager {
         return f;
     }
 
+
+    /*
+    * creates alerts
+    * */
     public static void alertCreator(Alert.AlertType type, String title, String text) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
