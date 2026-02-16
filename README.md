@@ -6,7 +6,7 @@ A comprehensive desktop application built with **JavaFX** designed to streamline
 
 ##  Features
 
-### 🏢 For Employers
+### For Employers
 
 - **Employee Management:** Add employees to your organization using their unique UUIDs.
 - **Job Creation:** Define job roles with specific titles, descriptions, and hourly pay rates.
@@ -15,14 +15,14 @@ A comprehensive desktop application built with **JavaFX** designed to streamline
 - **Payroll Management:** Track total earnings for employees based on completed tasks and hourly rates. Includes functionality to reset payment periods.
 - **Filtering:** Filter employee lists by job titles for easier management.
 
-###  For Employees
+### For Employees
 
 - **Personal Dashboard:** View total earnings and a schedule overview.
 - **Attendance:** Trackable daily attendance.
 - **Task Management:** View assigned tasks, descriptions, and time frames visually on a calendar.
 - **Task Completion:** Mark tasks as complete to automatically calculate and update earnings.
 
-##  Tech Stack
+## Tech Stack
 
 - **Language:** Java (OpenJDK)
 - **UI Framework:** JavaFX
@@ -32,7 +32,7 @@ A comprehensive desktop application built with **JavaFX** designed to streamline
     - **GemsFX:** For advanced UI controls (SelectionBox).
     - **Jackson Databind:** For serializing/deserializing objects to JSON.
 
-##  Installation & Setup
+## Installation & Setup
 
 1. **Clone the repository**
     
