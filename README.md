@@ -1,4 +1,4 @@
-# Workforce Management System
+# Simple Workforce Management Program
 
 A comprehensive desktop application built with **JavaFX** designed to streamline the interaction between Employers and Employees. This system handles task assignment, attendance tracking, payroll calculation, and job management using a lightweight JSON-based data storage system.
 
