@@ -31,7 +31,7 @@ A comprehensive desktop application built with **JavaFX** designed to streamline
     - **CalendarFX:** For the schedule/calendar visualization.
     - **GemsFX:** For advanced UI controls (SelectionBox).
     - **Jackson Databind:** For serializing/deserializing objects to JSON.
-# Project Structure
+## Project Structure
 
 This project follows a standard JavaFX application structure, organizing source code, resources (FXML views, JSON data), and configuration files.
 
