@@ -31,7 +31,50 @@ A comprehensive desktop application built with **JavaFX** designed to streamline
     - **CalendarFX:** For the schedule/calendar visualization.
     - **GemsFX:** For advanced UI controls (SelectionBox).
     - **Jackson Databind:** For serializing/deserializing objects to JSON.
+# Project Structure
 
+This project follows a standard JavaFX application structure, organizing source code, resources (FXML views, JSON data), and configuration files.
+
+```
+src/
+├── main/
+│   ├── java/
+│   │   └── net/
+│   │       └── backslashtrash/
+│   │           └── project1/
+│   │               ├── App.java                # Main entry point for the JavaFX application
+│   │               ├── AccountManager.java     # Handles data logic (JSON read/write, business rules)
+│   │               ├── Controller.java         # Main controller managing all FXML views and interactions
+│   │               └── Account.java            # Model class for user account data
+│   │
+│   └── resources/
+│       └── net/
+│           └── backslashtrash/
+│               ├── objects/                    # JSON Data Storage
+│               │   ├── employee.json           # Stores employee profiles, earnings, and status
+│               │   ├── employer.json           # Stores employer accounts and linked employees
+│               │   ├── tasks.json              # Stores all assigned tasks and their details
+│               │   ├── jobs.json               # Stores job definitions (titles, pay rates)
+│               │   ├── attendance.json         # Stores daily sign-in records
+│               │   └── lastreset.json          # Stores timestamps for the last payment reset
+│               │
+│               └── project1/                   # FXML Views (User Interface)
+│                   ├── login.fxml              # Login screen
+│                   ├── register.fxml           # Registration screen
+│                   ├── titleScreen.fxml        # Initial landing screen
+│                   ├── employer.fxml           # Main Employer Dashboard
+│                   ├── employee.fxml           # Main Employee Dashboard
+│                   ├── employeelist.fxml       # List view for managing employees
+│                   ├── tasklist.fxml           # List view for managing/assigning tasks
+│                   ├── joblist.fxml            # List view for creating/managing jobs
+│                   └── employeetasklist.fxml   # Task view specific to the logged-in employee
+```
+
+### Key Components
+
+- **`Controller.java`**: A centralized controller that manages navigation and logic for all FXML views. It handles dynamic data loading, table population, and user interactions.
+- **`AccountManager.java`**: The "backend" of the application. It performs file I/O operations using Jackson to read/write JSON files, handles authentication, and executes business logic like calculating earnings and assigning tasks.
+- **`objects/`**: This directory acts as the database for the application, storing persistent data in JSON format.
 ## Installation & Setup
 
 1. **Clone the repository**
