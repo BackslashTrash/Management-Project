@@ -154,6 +154,7 @@ public class Controller implements Initializable {
     @FXML public TableColumn<EmployeeTaskTableItem, String> colEmpTaskDesc;
     @FXML public TableColumn<EmployeeTaskTableItem, String> colEmpTaskTime;
     @FXML public TableColumn<EmployeeTaskTableItem, Button> colEmpTaskAction;
+    @FXML public Label employeeLastResetLabel;
 
     private CheckBox selectAllCheckBox;
     private CheckBox selectAllTasksCheckBox;
@@ -242,11 +243,21 @@ public class Controller implements Initializable {
     private void loadData() {
         if (App.getCurrentUser() == null) return;
 
-        // FIX: Update Earnings Label for Employee View immediately on load
+        // Update Earnings Label immediately on load
         if (earningsLabel != null && signInButton != null) { // signInButton presence implies Employee View
             try {
-                double total = AccountManager.getEarnings(App.getCurrentUser().getUuid());
-                earningsLabel.setText(String.format("Total Earnings: $%.2f", total));
+                String uuid = App.getCurrentUser().getUuid();
+                double total = AccountManager.getEarnings(uuid);
+                earningsLabel.setText(String.format("Total Earnings: $%.2f", total)); //Only display 2 decimals
+
+                if (employeeLastResetLabel != null) {
+                    String employer = AccountManager.findEmployer(uuid);
+                    if (employer != null) {
+                        String resetTime = AccountManager.getLastPaymentReset(employer);
+                        employeeLastResetLabel.setText("Last Pay Reset: " + resetTime);
+                    }
+                }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -989,7 +1000,7 @@ public class Controller implements Initializable {
 
 
     /*
-    * Load data and set styles for buttons
+    * Runs at start up, loads stuff
     * */
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -1617,6 +1628,7 @@ public class Controller implements Initializable {
             AccountManager.markAttendance(account.getUuid(), employer);
 
             signInText.setText("You have signed in today");
+            signInText.setVisible(true);
             signInButton.setVisible(false);
 
         } catch (IOException e) {

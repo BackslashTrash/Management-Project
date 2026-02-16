@@ -2,23 +2,7 @@
   "username" : "1111",
   "password" : "1111",
   "uuid" : "b59c67bf-196a-3758-991e-42f76670ceba",
-  "task" : "None",
   "job" : "job",
-  "totalEarnings" : 0.0
-}, {
-  "username" : "1212",
-  "password" : "1212",
-  "uuid" : "a0161022-8fe9-38f5-95a7-2dd730294d87"
-}, {
-  "username" : "1234",
-  "password" : "1234",
-  "uuid" : "81dc9bdb-52d0-3dc2-8036-dbd8313ed055",
-  "task" : "None",
-  "totalEarnings" : 0.0
-}, {
-  "username" : "3333",
-  "password" : "3333",
-  "uuid" : "2be9bd7a-3434-3703-8ca2-7d1918de58bd",
   "task" : "None",
   "totalEarnings" : 0.0
 } ]

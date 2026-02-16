@@ -119,7 +119,12 @@
                                     </Label>
                                 </VBox>
                                 <Region HBox.hgrow="ALWAYS" />
-                        <Label fx:id="lastResetLabel" />
+                                <Label fx:id="employeeLastResetLabel" text="Last Pay Reset: Never" textFill="#868e96" translateX="-10.0">
+                                    <font><Font size="12.0" /></font>
+                           <HBox.margin>
+                              <Insets />
+                           </HBox.margin>
+                                </Label>
                                 <!-- New Earnings Label -->
                                 <Label fx:id="earningsLabel" text="Total Earnings: $0.00" textFill="#28a745">
                                     <font>

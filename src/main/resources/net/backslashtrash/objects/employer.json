@@ -1,11 +1,5 @@
 [ {
-  "username" : "111",
-  "password" : "111"
-}, {
   "username" : "222",
   "password" : "222",
-  "employees" : [ ]
-}, {
-  "username" : "333",
-  "password" : "333"
+  "employees" : [ "b59c67bf-196a-3758-991e-42f76670ceba" ]
 } ]
