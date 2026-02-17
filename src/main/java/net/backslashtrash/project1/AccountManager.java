@@ -552,9 +552,41 @@ public class AccountManager {
     public static void removeJobs(List<String> jobIds) throws IOException {
         File file = getFile("jobs.json");
         if (!file.exists()) return;
+
         List<Map<String, String>> jobs = objectMapper.readValue(file, new TypeReference<>() {});
+
+        // 1. Identify the titles of jobs being removed
+        List<String> deletedJobTitles = new ArrayList<>();
+        for (Map<String, String> j : jobs) {
+            if (jobIds.contains(j.get("id"))) {
+                deletedJobTitles.add(j.get("title"));
+            }
+        }
+
+        // 2. Remove jobs from jobs.json
         jobs.removeIf(j -> jobIds.contains(j.get("id")));
         objectMapper.writeValue(file, jobs);
+
+        // 3. Update employees who had these jobs
+        if (!deletedJobTitles.isEmpty()) {
+            File empFile = getFile("employee.json");
+            if (empFile.exists()) {
+                List<Map<String, Object>> employees = objectMapper.readValue(empFile, new TypeReference<>() {});
+                boolean empUpdated = false;
+
+                for (Map<String, Object> emp : employees) {
+                    String currentJob = (String) emp.get("job"); // or "jobPosition" depending on your JSON structure
+                    if (currentJob != null && deletedJobTitles.contains(currentJob)) {
+                        emp.put("job", "Unassigned");
+                        empUpdated = true;
+                    }
+                }
+
+                if (empUpdated) {
+                    objectMapper.writeValue(empFile, employees);
+                }
+            }
+        }
     }
 
     public static String getEmployeeTask(String employeeUuid) throws IOException {
@@ -706,6 +738,14 @@ public class AccountManager {
         File f = new File("src/main/resources/net/backslashtrash/project1/objects/" + name);
         if (!f.getParentFile().exists()) {
             f = new File("src/main/resources/net/backslashtrash/objects/" + name);
+        }
+        if (f.exists() && f.length() == 0) {
+            try {
+                // Initialize with empty array
+                objectMapper.writeValue(f, new ArrayList<>());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         return f;
     }
