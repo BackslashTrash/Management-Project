@@ -96,14 +96,33 @@ src/
 - Create an **Employer** account first to set up the organization.
 - Create an **Employee** account to simulate a worker.
 
-### 2. Adding employees
+### 2. Adding/removing employees
 
-1. Log in as the **Employee**.
+1. Log in as **Employee**.
 2. On the sidebar, click **Copy My UUID**.
 3. Log out and log in as the **Employer**.
 4. Click the **Add Employee** button (usually represented by a `+` user icon).
 5. Paste the UUID to link the employee to your dashboard.
+6. To remove an employee, select the employees in employee list, then click on the **Remove Selected** button.
 
+### 3. Adding/removing tasks
+1. Log in as **Employer**
+2. Go to **Employee list** tab
+3. Select the employees you want to assign, you don't have to do this step
+4. Click on **Add task** 
+5. Fill out the date, time, etc.
+6. The task should be assigned to the employees selected.
+7. You can also assign task to employees in the **Task list** tab and click on the **+** icon and select the employees you want to assign
+8. To remove a task, you can delete it the same way you delete employees by selecting task then clicking the **Remove Selected** button in task list tab
+
+### 4. Adding/removing Jobs
+1. Log in as **Employer**
+2. Go to **Employee list** tab
+3. Click on **Add Job**
+4. Fill in pay, title, etc
+5. After you confirm it, it should be ready to assign
+6. Go to **Employee list** tab and select the job you want to assign to each of your employees.
+7. To remove a job, To remove a task, you can delete it the same way you delete employees/tasks by selecting task then clicking the **Remove Selected** button in job list tab.
 ### 3. Workflow
 
 1. **Employer:** Go to "Job List" and create a job role (e.g., "Developer", "$25.00").
